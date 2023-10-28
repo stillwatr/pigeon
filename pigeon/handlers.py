@@ -5,6 +5,7 @@ import telegram.ext as tg_ext
 
 # ==================================================================================================
 
+
 class BotAddedToChatHandler(tg_ext.ChatMemberHandler):
     """
     TODO
@@ -69,4 +70,4 @@ class BotAddedToChatHandler(tg_ext.ChatMemberHandler):
         if not chat_id:
             return
 
-        cxt.update({ "chat_id": chat_id, "chat_title": chat.title })
+        cxt.update({"chat_id": chat_id, "chat_title": chat.title})

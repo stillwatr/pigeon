@@ -30,6 +30,7 @@ SUCCESS: int = logging.INFO + 1
 WARN: int = logging.WARN
 ERROR: int = logging.ERROR
 
+
 class LogFormatter(logging.Formatter):
     """
     TODO
@@ -42,6 +43,7 @@ class LogFormatter(logging.Formatter):
 
 # ==================================================================================================
 
+
 logger = logging.getLogger("telegram_bot")
 handler = logging.StreamHandler()
 handler.setFormatter(LogFormatter())
@@ -51,22 +53,25 @@ logging.addLevelName(SUCCESS, "SUCCESS")
 
 # ==================================================================================================
 
+
 def set_level(level: int):
     """
     TODO
     """
     logger.setLevel(level)
 
+
 def get_extra(format: str):
     """
     TODO
     """
     c = getframeinfo(stack()[2][0])
-    return {"xname": splitext(basename(c.filename))[0], "xline": c.lineno, "xformat": format }
+    return {"xname": splitext(basename(c.filename))[0], "xline": c.lineno, "xformat": format}
 
 # ==================================================================================================
 
-def error(msg: str, ex: Optional[BaseException]=None):
+
+def error(msg: str, ex: Optional[BaseException] = None):
     """
     TODO
     """

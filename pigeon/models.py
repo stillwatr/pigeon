@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import datetime
 
+from typing import Annotated
+
 # ==================================================================================================
+
 
 class TelegramObject:
     """
@@ -13,6 +16,7 @@ class TelegramObject:
     def __init__(self, id: str = None) -> None:
         self.id = id
 
+
 class Message(TelegramObject):
     """
     TODO
@@ -22,6 +26,7 @@ class Message(TelegramObject):
     author_peer_id: str
     post_date: datetime.datetime
     edit_date: datetime.datetime
+    status_message_type: str
     text: str
     photo_id: str
     _photo: Photo = None
@@ -38,11 +43,12 @@ class Message(TelegramObject):
 
     def __init__(self, id: str = None, chat_id: int = None, author_peer_type: str = None,
                  author_peer_id: str = None, post_date: datetime.datetime = None,
-                 edit_date: datetime.datetime = None, text: str = None, photo_id: str = None,
-                 photo: Photo = None, video_id: str = None, video: Video = None,
-                 reactions: list[tuple] = None, num_views: int = None, num_forwards: int = None,
-                 num_replies: int = None, group_id: str = None, reply_to_msg_id: str = None,
-                 forward_from_peer_type: str = None, forward_from_peer_id: str = None) -> None:
+                 edit_date: datetime.datetime = None, status_message_type: str = None,
+                 text: str = None, photo_id: str = None, photo: Photo = None, video_id: str = None,
+                 video: Video = None, reactions: list[tuple] = None, num_views: int = None,
+                 num_forwards: int = None, num_replies: int = None, group_id: str = None,
+                 reply_to_msg_id: str = None, forward_from_peer_type: str = None,
+                 forward_from_peer_id: str = None) -> None:
         """
         TODO
         """
@@ -52,6 +58,7 @@ class Message(TelegramObject):
         self.author_peer_id = author_peer_id
         self.post_date = post_date
         self.edit_date = edit_date
+        self.status_message_type = status_message_type
         self.text = text
         self.photo_id = photo_id
         self._photo = photo
@@ -73,8 +80,9 @@ class Message(TelegramObject):
         return f"Message(id: {self.id}; chat_id: {self.chat_id}; " \
                f"author_peer_type: {self.author_peer_type}; " \
                f"author_peer_id: {self.author_peer_id}; post_date: {self.post_date}; " \
-               f"edit_date: {self.edit_date}; text: {repr(self.text)}; " \
-               f"photo_id: {self.photo_id}; video_id: {repr(self.video_id)}; " \
+               f"edit_date: {self.edit_date}; status_message_type: {self.status_message_type}; " \
+               f"text: {repr(self.text)}; photo_id: {self.photo_id}; " \
+               f"video_id: {repr(self.video_id)}; " \
                f"reactions: {self._reactions}; num_views: {self.num_views}; " \
                f"num_forwards: {self.num_forwards}; num_replies: {self.num_replies}; " \
                f"group_id: {self.group_id}; reply_to_msg_id: {self.reply_to_msg_id}; " \
@@ -89,6 +97,7 @@ class Message(TelegramObject):
 
 # ==================================================================================================
 
+
 class Photo(TelegramObject):
     """
     TODO
@@ -102,13 +111,13 @@ class Photo(TelegramObject):
     size: int
     width: int
     height: int
-    md5: str
+    hash: str
     _telethon_media_obj: any
 
     def __init__(self, id: str = None, chat_id: int = None, ref_id: int = None,
                  message_id: str = None, author_peer_type: str = None, author_peer_id: str = None,
                  post_date: datetime.datetime = None, size: int = None, width: int = None,
-                 height: int = None, md5: int = None) -> None:
+                 height: int = None, hash: int = None) -> None:
         """
         TODO
         """
@@ -122,7 +131,7 @@ class Photo(TelegramObject):
         self.size = size
         self.width = width
         self.height = height
-        self.md5 = md5
+        self.hash = hash
         self._telethon_media_obj = None
 
     def __str__(self) -> str:
@@ -132,7 +141,7 @@ class Photo(TelegramObject):
         return f"Photo(id: {self.id}; chat_id: {self.chat_id}; ref_id: {self.ref_id}; " \
                f"message_id: {self.message_id}; author_peer_type: {self.author_peer_type}; " \
                f"author_peer_id: {self.author_peer_id}; post_date: {self.post_date}; " \
-               f"size: {self.size}; width: {self.width}; height: {self.height}; md5: {self.md5})"
+               f"size: {self.size}; width: {self.width}; height: {self.height}; hash: {self.hash})"
 
     def __repr__(self) -> str:
         """
@@ -142,11 +151,12 @@ class Photo(TelegramObject):
 
 # ==================================================================================================
 
+
 class Video(TelegramObject):
     """
     TODO
     """
-    chat_id: int
+    chat_id: Annotated[int, {"xxx": 1}]
     ref_id: int
     message_id: int
     author_peer_type: str
@@ -157,13 +167,13 @@ class Video(TelegramObject):
     duration: int
     width: int
     height: int
-    thumb_md5: str
+    thumb_hash: str
     _telethon_media_obj: any
 
     def __init__(self, id: str = None, chat_id: int = None, author_peer_type: str = None,
                  author_peer_id: str = None, post_date: datetime.datetime = None,
                  mime_type: str = None, size: int = None, duration: int = None, width: int = None,
-                 height: int = None, thumb_md5: int = None) -> None:
+                 height: int = None, thumb_hash: int = None) -> None:
         """
         TODO
         """
@@ -177,7 +187,7 @@ class Video(TelegramObject):
         self.duration = duration
         self.width = width
         self.height = height
-        self.thumb_md5 = thumb_md5
+        self.thumb_hash = thumb_hash
         self._telethon_media_obj = None
 
     def __str__(self) -> str:
@@ -188,7 +198,7 @@ class Video(TelegramObject):
                f"message_id: {self.message_id}; author_peer_type: {self.author_peer_type}; " \
                f"author_peer_id: {self.author_peer_id}; mime_type: {self.mime_type}; " \
                f"size: {self.size}; duration: {self.duration}; width: {self.width}; " \
-               f"height: {self.height}; thumb_md5: {self.thumb_md5})"
+               f"height: {self.height}; thumb_hash: {self.thumb_hash})"
 
     def __repr__(self) -> str:
         """
@@ -197,6 +207,7 @@ class Video(TelegramObject):
         return f"Video(id: {self.id})"
 
 # ==================================================================================================
+
 
 class InlineMessageButton():
     """

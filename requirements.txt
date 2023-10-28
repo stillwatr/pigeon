@@ -1,6 +1,9 @@
 alembic==1.10.2  # (Need to be specified here, because atm, dataset installs a newer version which results in TypeErrors, see https://github.com/pudo/dataset/issues/417)
 asyncio==3.4.3
 dataset==1.6.0
+imagehash==4.3.1
+Pillow==10.1.0
+psycopg2==2.9.9
 python-telegram-bot==20.1
 python-telegram-bot[job-queue]==20.1
 tg-file-id==0.0.4

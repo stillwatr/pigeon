@@ -2,7 +2,7 @@ import dataset
 import datetime
 import typing
 
-from telegram_commons.models import TelegramObject
+from pigeon.models import TelegramObject
 
 COLUMN_TYPES: dict = {
     bool: dataset.types.Boolean,
@@ -13,6 +13,7 @@ COLUMN_TYPES: dict = {
 }
 
 # ==================================================================================================
+
 
 class Database:
     """
@@ -41,6 +42,7 @@ class Database:
         table_name: str = clazz.__name__
         if self.db.has_table(table_name):
             self.db[table_name].drop()
+
         table: dataset.Table = self.db.create_table(
             table_name,
             primary_id='id',
@@ -49,10 +51,11 @@ class Database:
 
         # Create a column for each "public" property (= each property not starting with "_").
         type_hints = typing.get_type_hints(clazz)
-        public_props = { k: type_hints[k] for k in type_hints.keys() if not k.startswith("_") }
+        public_props = {k: type_hints[k] for k in type_hints.keys() if not k.startswith("_")}
         for prop_name, prop_type in public_props.items():
             table.create_column(prop_name, COLUMN_TYPES.get(prop_type, dataset.types.Unicode))
 
+        table.create_column("ts_created", dataset.types.DateTime, nullable=False)
         table.create_column("ts_modified", dataset.types.DateTime, nullable=False)
 
         # Create an index for each column.
@@ -131,7 +134,9 @@ class Database:
             raise ValueError("No table exists for the specified class.")
 
         row = vars(obj)
-        row["ts_modified"] = datetime.datetime.utcnow()
+        ts_now = datetime.datetime.utcnow()
+        row["ts_created"] = ts_now
+        row["ts_modified"] = ts_now
         self.db[table_name].insert(row, ensure=False)
 
     def insert_many(self, clazz: type[TelegramObject], objs: list[TelegramObject]) -> None:
@@ -152,11 +157,14 @@ class Database:
         if not self.db.has_table(table_name):
             raise ValueError("No table exists for the specified class.")
 
+        ts_now = datetime.datetime.utcnow()
+
         rows = []
         for obj in objs:
-           row = vars(obj)
-           row["ts_modified"] = datetime.datetime.utcnow()
-           rows.append(row)
+            row = vars(obj)
+            row["ts_created"] = ts_now
+            row["ts_modified"] = ts_now
+            rows.append(row)
         self.db[table_name].insert_many(rows, ensure=False)
 
     # ==============================================================================================
@@ -200,11 +208,13 @@ class Database:
         if not self.db.has_table(table_name):
             raise ValueError("No table exists for the specified class.")
 
+        ts_now = datetime.datetime.utcnow()
+
         rows = []
         for obj in objs:
-           row = vars(obj)
-           row["ts_modified"] = datetime.datetime.utcnow()
-           rows.append(row)
+            row = vars(obj)
+            row["ts_modified"] = ts_now
+            rows.append(row)
         self.db[table_name].update_many(rows, keys=["id"], ensure=False)
 
     # ==============================================================================================
@@ -226,8 +236,12 @@ class Database:
         if not self.db.has_table(table_name):
             raise ValueError("No table exists for the specified class.")
 
+        ts_now = datetime.datetime.utcnow()
+
         row = vars(obj)
-        row["ts_modified"] = datetime.datetime.utcnow()
+        if not self.contains(clazz, obj):
+            row["ts_created"] = ts_now
+        row["ts_modified"] = ts_now
         self.db[table_name].upsert(row, keys=["id"], ensure=False)
 
     def upsert_many(self, clazz: type[TelegramObject], objs: list[TelegramObject]) -> None:
@@ -248,11 +262,15 @@ class Database:
         if not self.db.has_table(table_name):
             raise ValueError("No table exists for the specified class.")
 
+        ts_now = datetime.datetime.utcnow()
+
         rows = []
         for obj in objs:
-           row = vars(obj)
-           row["ts_modified"] = datetime.datetime.utcnow()
-           rows.append(row)
+            row = vars(obj)
+            if not self.contains(clazz, obj):
+                row["ts_created"] = ts_now
+            row["ts_modified"] = ts_now
+            rows.append(row)
         self.db[table_name].upsert_many(rows, keys=["id"], ensure=False)
 
     # ==============================================================================================

@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import hashlib
+import math
 import telethon
 
-from telethon.types import TypePhotoSize, PhotoSize, PhotoSizeProgressive
+from telethon.types import TypePhotoSize, PhotoSizeProgressive
 
-from telegram_commons.models import Message, Photo, Video
-import telegram_commons.utils as utils
+from pigeon.models import Message, Photo, Video
+import pigeon.utils as utils
 
 # ==================================================================================================
 
@@ -25,9 +25,9 @@ class TelegramChatScraper:
         TODO
         """
         self.client: telethon.TelegramClient = telethon.TelegramClient(
-            session  = DEFAULT_TELETHON_SESSION,
-            api_id   = telethon_api_id,
-            api_hash = telethon_api_hash
+            session=DEFAULT_TELETHON_SESSION,
+            api_id=telethon_api_id,
+            api_hash=telethon_api_hash
         )
 
     async def start(self):
@@ -38,16 +38,16 @@ class TelegramChatScraper:
         try:
             await self.client.start()
         except Exception as e:
-            raise RuntimeError(f"Could not start Telethon client.", e)
+            raise RuntimeError("Could not start Telethon client.", e)
 
         # Get the groups and channels of which the user is a member. This is necessary to later
         # access a group/chat by id, see https://docs.telethon.dev/en/stable/concepts/entities.html.
         try:
             await self.client.get_dialogs()
         except Exception as e:
-            raise RuntimeError(f"Could not get groups and channels of the user.", e)
+            raise RuntimeError("Could not get groups and channels of the user.", e)
 
-    async def get_messages(self, chat_id: str, compute_media_md5: bool = False) -> list[Message]:
+    async def get_messages(self, chat_id: str, compute_media_hash: bool = False) -> list[Message]:
         """
         TODO
         """
@@ -73,9 +73,9 @@ class TelegramChatScraper:
             message.post_date = msg.date
             message.edit_date = msg.edit_date
             message.text = msg.message
-            message._photo = await self._get_photo(msg, compute_media_md5)
+            message._photo = await self._get_photo(msg, compute_media_hash)
             message.photo_id = message._photo.id if message._photo.id is not None else None
-            message._video = await self._get_video(msg, compute_media_md5)
+            message._video = await self._get_video(msg, compute_media_hash)
             message.video_id = message._video.id if message._video.id is not None else None
             message._reactions = self._get_reactions(msg)
             message.num_views = msg.views if msg.views is not None else 0
@@ -96,7 +96,7 @@ class TelegramChatScraper:
 
         return messages
 
-    async def get_photos(self, chat_id: str, compute_md5: bool = False) -> list[Photo]:
+    async def get_photos(self, chat_id: str, compute_hash: bool = False) -> list[Photo]:
         """
         TODO
         """
@@ -112,13 +112,13 @@ class TelegramChatScraper:
         # object to the result list.
         # NOTE: Passing `reverse=True` to iter_messages() sorts the messages from old to new.
         async for msg in self.client.iter_messages(chat_id, reverse=True):
-            photo: Photo = await self._get_photo(chat_id, msg, compute_md5)
+            photo: Photo = await self._get_photo(chat_id, msg, compute_hash)
             if photo is not None:
                 photos.append(photo)
 
         return photos
 
-    async def get_videos(self, chat_id: str, compute_md5: bool = False) -> list[Video]:
+    async def get_videos(self, chat_id: str, compute_hash: bool = False) -> list[Video]:
         """
         TODO
         """
@@ -134,12 +134,11 @@ class TelegramChatScraper:
         # object to the result list.
         # NOTE: Passing `reverse=True` to iter_messages() sorts the messages from old to new.
         async for msg in self.client.iter_messages(chat_id, reverse=True):
-            video: Video = await self._get_video(chat_id, msg, compute_md5)
+            video: Video = await self._get_video(chat_id, msg, compute_hash)
             if video is not None:
                 videos.append(video)
 
         return videos
-
 
     # async def download_video(self, video: Video, file: str = None):
     #     """
@@ -196,7 +195,6 @@ class TelegramChatScraper:
 
         return None, None
 
-
     def _get_reactions(self, msg: telethon.types.Message) -> list[tuple]:
         """
         TODO
@@ -218,7 +216,11 @@ class TelegramChatScraper:
 
         return reactions
 
-    async def _get_photo(self, chat_id: str, msg: telethon.types.Message, compute_md5: bool = False) -> Photo:
+    async def _get_photo(
+            self,
+            chat_id: str,
+            msg: telethon.types.Message,
+            compute_hash: bool = False) -> Photo:
         """
         TODO
         """
@@ -258,21 +260,20 @@ class TelegramChatScraper:
             else:
                 photo.size = largest_photo_size.size
 
-            if compute_md5:
+            if compute_hash:
                 try:
-                    photo_bytes = await msg.download_media(file=bytes, thumb=-1)
-                    photo.md5 = hashlib.md5(photo_bytes).hexdigest()
+                    photo_bytes = await msg.download_media(file=bytes, thumbnail=-1)
+                    photo.hash = str(utils.compute_image_hash(photo_bytes))
                 except Exception as e:
-                    print("Could not download thumb", e)
+                    print("Could not download thumbnail", e)
                     pass
 
         return photo
 
-
     async def _get_video(self,
                          chat_id: str,
                          msg: telethon.types.Message,
-                         compute_md5: bool = False) -> Video:
+                         compute_hash: bool = False) -> Video:
         """
         TODO
         """
@@ -310,21 +311,21 @@ class TelegramChatScraper:
         if doc.attributes is not None:
             for attr in doc.attributes:
                 if isinstance(attr, telethon.types.DocumentAttributeVideo):
-                    video.duration = attr.duration
+                    video.duration = math.ceil(attr.duration)
                     video.width = attr.w
                     video.height = attr.h
-                    break
 
-        # Obtain the MD5 hash of the video's largest thumbnail.
-        if compute_md5:
+        # Compute the hash of the video's largest thumbnail.
+        if compute_hash:
             if doc.thumbs is not None:
                 for thumb in reversed(doc.thumbs):
                     if isinstance(thumb, telethon.types.PhotoSize):
                         try:
-                            thumb_bytes = await msg.download_media(file=bytes, thumb=thumb)
-                            video.thumb_md5 = hashlib.md5(thumb_bytes).hexdigest()
+                            thumbnail_bytes = await msg.download_media(file=bytes, thumb=thumb)
+                            video.thumb_hash = str(utils.compute_image_hash(thumbnail_bytes))
                         except Exception as e:
-                            # log.warn("Could not download thumb.")
+                            print(e)
+                            # log.warn("Could not download thumbnail.")
                             pass
                         break
 
