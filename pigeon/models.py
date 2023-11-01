@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import datetime
 
-from typing import Annotated
-
 # ==================================================================================================
 
 
@@ -11,10 +9,172 @@ class TelegramObject:
     """
     TODO
     """
-    id: str
+    id: int
 
-    def __init__(self, id: str = None) -> None:
+    def __init__(self, id: int = None) -> None:
         self.id = id
+
+# ==================================================================================================
+
+
+class Chat(TelegramObject):
+    """
+    TODO
+    """
+    name: str
+    verified: bool
+    restricted: bool
+    restricted_reason: str
+
+    def __init__(
+            self,
+            id: int = None,
+            name: str = None,
+            verified: bool = None,
+            restricted: bool = None,
+            restricted_reason: str = None) -> None:
+        super().__init__(id)
+        self.name = name
+        self.verified = verified
+        self.restricted = restricted
+        self.restricted_reason = restricted_reason
+
+
+class User(Chat):
+    """
+    TODO
+    """
+    first_name: str
+    last_name: str
+    user_name: str
+    phone: str
+    lang_code: str
+    deleted: bool
+    is_bot: bool
+
+    def __init__(
+            self,
+            id: int = None,
+            first_name: str = None,
+            last_name: str = None,
+            user_name: str = None,
+            phone: str = None,
+            lang_code: str = None,
+            verified: bool = None,
+            deleted: bool = None,
+            is_bot: bool = None,
+            restricted: bool = None,
+            restricted_reason: str = None) -> None:
+        super().__init__(id, user_name, verified, restricted, restricted_reason)
+        self.first_name = first_name
+        self.last_name = last_name
+        self.user_name = user_name
+        self.phone = phone
+        self.lang_code = lang_code
+        self.deleted = deleted
+        self.is_bot = is_bot
+
+    def __str__(self) -> str:
+        """
+        TODO
+        """
+        return "User(" \
+               f"id: {self.id}; " \
+               f"first_name: {self.first_name}; " \
+               f"last_name: {self.last_name}; " \
+               f"user_name: {self.user_name}; " \
+               f"phone: {self.phone}; " \
+               f"lang_code: {self.lang_code}; " \
+               f"verified: {self.verified}; " \
+               f"restricted: {self.restricted}; " \
+               f"restricted_reason: {self.restricted_reason}; " \
+               f"deleted: {self.deleted}; "\
+               f"is_bot: {self.is_bot})"
+
+    def __repr__(self) -> str:
+        """
+        TODO
+        """
+        return f"User(id: {self.id})"
+
+
+class Group(Chat):
+    """
+    TODO
+    """
+    creation_date: datetime.datetime
+    deactivated: bool
+
+    def __init__(
+            self,
+            id: int = None,
+            name: str = None,
+            creation_date: datetime.datetime = None,
+            deactivated: bool = None,
+            verified: bool = None,
+            restricted: bool = None,
+            restricted_reason: str = None) -> None:
+        super().__init__(id, name, verified, restricted, restricted_reason)
+        self.creation_date = creation_date
+        self.deactivated = deactivated
+
+    def __str__(self) -> str:
+        """
+        TODO
+        """
+        return "Group(" \
+               f"id: {self.id}; " \
+               f"name: {self.name}; " \
+               f"creation_date: {self.creation_date}; " \
+               f"deactivated: {self.deactivated}; " \
+               f"verified: {self.verified}; " \
+               f"restricted: {self.restricted}; " \
+               f"restricted_reason: {self.restricted_reason})"
+
+    def __repr__(self) -> str:
+        """
+        TODO
+        """
+        return f"Group(id: {self.id})"
+
+
+class Channel(Chat):
+    """
+    TODO
+    """
+    creation_date: datetime.datetime
+
+    def __init__(
+            self,
+            id: int = None,
+            name: str = None,
+            creation_date: datetime.dateime = None,
+            verified: bool = None,
+            restricted: bool = None,
+            restricted_reason: str = None) -> None:
+        super().__init__(id, name, verified, restricted, restricted_reason)
+        self.name = name
+        self.creation_date = creation_date
+
+    def __str__(self) -> str:
+        """
+        TODO
+        """
+        return "Channel(" \
+               f"id: {self.id}; " \
+               f"name: {self.name}; " \
+               f"creation_date: {self.creation_date}; " \
+               f"verified: {self.verified}; " \
+               f"restricted: {self.restricted}; " \
+               f"restricted_reason: {self.restricted_reason})"
+
+    def __repr__(self) -> str:
+        """
+        TODO
+        """
+        return f"Channel(id: {self.id})"
+
+# ==================================================================================================
 
 
 class Message(TelegramObject):
@@ -22,72 +182,86 @@ class Message(TelegramObject):
     TODO
     """
     chat_id: int
-    author_peer_type: str
-    author_peer_id: str
+    from_chat: Chat
     post_date: datetime.datetime
     edit_date: datetime.datetime
     status_message_type: str
     text: str
-    photo_id: str
-    _photo: Photo = None
-    video_id: str
-    _video: Video = None
-    _reactions: list[tuple]  # TODO
+    photo_id: int
+    photo: Photo
+    video_id: int
+    video: Video
+    reactions: list[tuple]  # TODO: Introduce model for reactions?
     num_views: int
     num_forwards: int
     num_replies: int
     group_id: str
     reply_to_msg_id: str
-    forward_from_peer_type: str
-    forward_from_peer_id: str
+    forward_from_chat: Chat
 
-    def __init__(self, id: str = None, chat_id: int = None, author_peer_type: str = None,
-                 author_peer_id: str = None, post_date: datetime.datetime = None,
-                 edit_date: datetime.datetime = None, status_message_type: str = None,
-                 text: str = None, photo_id: str = None, photo: Photo = None, video_id: str = None,
-                 video: Video = None, reactions: list[tuple] = None, num_views: int = None,
-                 num_forwards: int = None, num_replies: int = None, group_id: str = None,
-                 reply_to_msg_id: str = None, forward_from_peer_type: str = None,
-                 forward_from_peer_id: str = None) -> None:
+    def __init__(
+            self,
+            id: int = None,
+            chat_id: int = None,
+            from_chat: Chat = None,
+            post_date: datetime.datetime = None,
+            edit_date: datetime.datetime = None,
+            status_message_type: str = None,
+            text: str = None,
+            photo_id: int = None,
+            photo: Photo = None,
+            video_id: int = None,
+            video: Video = None,
+            reactions: list[tuple] = None,
+            num_views: int = None,
+            num_forwards: int = None,
+            num_replies: int = None,
+            group_id: str = None,
+            reply_to_msg_id: str = None,
+            forward_from_chat: Chat = None) -> None:
         """
         TODO
         """
         super().__init__(id)
         self.chat_id = chat_id
-        self.author_peer_type = author_peer_type
-        self.author_peer_id = author_peer_id
+        self.from_chat = from_chat
         self.post_date = post_date
         self.edit_date = edit_date
         self.status_message_type = status_message_type
         self.text = text
         self.photo_id = photo_id
-        self._photo = photo
+        self.photo = photo
         self.video_id = video_id
-        self._video = video
-        self._reactions = reactions
+        self.video = video
+        self.reactions = reactions
         self.num_views = num_views
         self.num_forwards = num_forwards
         self.num_replies = num_replies
         self.group_id = group_id
         self.reply_to_msg_id = reply_to_msg_id
-        self.forward_from_peer_type = forward_from_peer_type
-        self.forward_from_peer_id = forward_from_peer_id
+        self.forward_from_chat = forward_from_chat
 
     def __str__(self) -> str:
         """
         TODO
         """
-        return f"Message(id: {self.id}; chat_id: {self.chat_id}; " \
-               f"author_peer_type: {self.author_peer_type}; " \
-               f"author_peer_id: {self.author_peer_id}; post_date: {self.post_date}; " \
-               f"edit_date: {self.edit_date}; status_message_type: {self.status_message_type}; " \
-               f"text: {repr(self.text)}; photo_id: {self.photo_id}; " \
+        return "Message(" \
+               f"id: {self.id}; " \
+               f"chat_id: {self.chat_id}; " \
+               f"from_chat: {repr(self.from_chat)}; " \
+               f"post_date: {self.post_date}; " \
+               f"edit_date: {self.edit_date}; " \
+               f"status_message_type: {self.status_message_type}; " \
+               f"text: {repr(self.text)}; " \
+               f"photo_id: {self.photo_id}; " \
                f"video_id: {repr(self.video_id)}; " \
-               f"reactions: {self._reactions}; num_views: {self.num_views}; " \
-               f"num_forwards: {self.num_forwards}; num_replies: {self.num_replies}; " \
-               f"group_id: {self.group_id}; reply_to_msg_id: {self.reply_to_msg_id}; " \
-               f"forward_from_peer_type: {self.forward_from_peer_type}; " \
-               f"forward_from_peer_id: {self.forward_from_peer_id})"
+               f"reactions: {self.reactions}; " \
+               f"num_views: {self.num_views}; " \
+               f"num_forwards: {self.num_forwards}; " \
+               f"num_replies: {self.num_replies}; " \
+               f"group_id: {self.group_id}; " \
+               f"reply_to_msg_id: {self.reply_to_msg_id}; " \
+               f"forward_from_chat: {repr(self.forward_from_chat)})"
 
     def __repr__(self) -> str:
         """
@@ -102,46 +276,37 @@ class Photo(TelegramObject):
     """
     TODO
     """
-    chat_id: int
-    ref_id: int
-    message_id: int
-    author_peer_type: str
-    author_peer_id: int
-    post_date: datetime.datetime
     size: int
     width: int
     height: int
-    hash: str
-    _telethon_media_obj: any
+    hash: int
 
-    def __init__(self, id: str = None, chat_id: int = None, ref_id: int = None,
-                 message_id: str = None, author_peer_type: str = None, author_peer_id: str = None,
-                 post_date: datetime.datetime = None, size: int = None, width: int = None,
-                 height: int = None, hash: int = None) -> None:
+    def __init__(
+            self,
+            id: int = None,
+            size: int = None,
+            width: int = None,
+            height: int = None,
+            hash: int = None) -> None:
         """
         TODO
         """
         super().__init__(id)
-        self.chat_id = chat_id
-        self.ref_id = ref_id
-        self.message_id = message_id
-        self.author_peer_type = author_peer_type
-        self.author_peer_id = author_peer_id
-        self.post_date = post_date
         self.size = size
         self.width = width
         self.height = height
         self.hash = hash
-        self._telethon_media_obj = None
 
     def __str__(self) -> str:
         """
         TODO
         """
-        return f"Photo(id: {self.id}; chat_id: {self.chat_id}; ref_id: {self.ref_id}; " \
-               f"message_id: {self.message_id}; author_peer_type: {self.author_peer_type}; " \
-               f"author_peer_id: {self.author_peer_id}; post_date: {self.post_date}; " \
-               f"size: {self.size}; width: {self.width}; height: {self.height}; hash: {self.hash})"
+        return "Photo(" \
+               f"id: {self.id}; " \
+               f"size: {self.size}; " \
+               f"width: {self.width}; " \
+               f"height: {self.height}; " \
+               f"hash: {self.hash})"
 
     def __repr__(self) -> str:
         """
@@ -156,49 +321,45 @@ class Video(TelegramObject):
     """
     TODO
     """
-    chat_id: Annotated[int, {"xxx": 1}]
-    ref_id: int
-    message_id: int
-    author_peer_type: str
-    author_peer_id: int
-    post_date: datetime.datetime
     mime_type: str
     size: int
     duration: int
     width: int
     height: int
-    thumb_hash: str
-    _telethon_media_obj: any
+    thumb_hash: int
 
-    def __init__(self, id: str = None, chat_id: int = None, author_peer_type: str = None,
-                 author_peer_id: str = None, post_date: datetime.datetime = None,
-                 mime_type: str = None, size: int = None, duration: int = None, width: int = None,
-                 height: int = None, thumb_hash: int = None) -> None:
+    def __init__(
+            self,
+            id: int = None,
+            mime_type: str = None,
+            size: int = None,
+            duration: int = None,
+            width: int = None,
+            height: int = None,
+            thumb_hash: int = None) -> None:
         """
         TODO
         """
         super().__init__(id)
-        self.chat_id = chat_id
-        self.author_peer_type = author_peer_type
-        self.author_peer_id = author_peer_id
-        self.post_date = post_date
         self.mime_type = mime_type
         self.size = size
         self.duration = duration
         self.width = width
         self.height = height
         self.thumb_hash = thumb_hash
-        self._telethon_media_obj = None
 
     def __str__(self) -> str:
         """
         TODO
         """
-        return f"Video(id: {self.id}; chat_id: {self.chat_id}; ref_id: {self.ref_id}; " \
-               f"message_id: {self.message_id}; author_peer_type: {self.author_peer_type}; " \
-               f"author_peer_id: {self.author_peer_id}; mime_type: {self.mime_type}; " \
-               f"size: {self.size}; duration: {self.duration}; width: {self.width}; " \
-               f"height: {self.height}; thumb_hash: {self.thumb_hash})"
+        return "Video(" \
+               f"id: {self.id}; " \
+               f"mime_type: {self.mime_type}; " \
+               f"size: {self.size}; " \
+               f"duration: {self.duration}; " \
+               f"width: {self.width}; " \
+               f"height: {self.height}; " \
+               f"thumb_hash: {self.thumb_hash})"
 
     def __repr__(self) -> str:
         """
@@ -213,7 +374,6 @@ class InlineMessageButton():
     """
     TODO
     """
-
     label: str
     url: str
     callback_data: str | object
