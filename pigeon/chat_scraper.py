@@ -8,24 +8,20 @@ import pigeon.utils as utils
 
 # ==================================================================================================
 
-# TODO: If dir 'sessions' does not exist, an exception is thrown.
-# DEFAULT_TELETHON_SESSION: str = "sessions/telegram-chat-scraper"
-DEFAULT_TELETHON_SESSION: str = "telegram-chat-scraper"
-
 
 class TelegramChatScraper:
     """
     TODO
     """
 
-    def __init__(self, telethon_api_id: int, telethon_api_hash: str) -> None:
+    def __init__(self, telethon_api_id: int, telethon_api_hash: str, telethon_session: str) -> None:
         """
         TODO
         """
         self.client: telethon.TelegramClient = telethon.TelegramClient(
             api_id=telethon_api_id,
             api_hash=telethon_api_hash,
-            session=DEFAULT_TELETHON_SESSION
+            session=telethon_session
         )
         self.chats: list[models.Chat] = []
 
