@@ -60,6 +60,28 @@ class TelegramChatScraper:
 
         return chats
 
+    async def get_users(self, chat_id: int) -> list[models.User]:
+        """
+        TODO
+        """
+        assert chat_id is not None, "No chat id given."
+
+        # Start the client if necessary.
+        if not self.client.is_connected():
+            await self.start()
+
+        # Scrape the users of the specified chat.
+        users: list[models.User] = []
+        async for participant in self.client.iter_participants(chat_id):
+            # Ignore all non-messages.
+            if not isinstance(participant, telethon.types.User):
+                continue
+
+            users.append(self.entity_to_user(participant))
+
+        return users
+
+
     async def get_messages(
             self,
             chat_id: int,
@@ -88,10 +110,10 @@ class TelegramChatScraper:
             message.post_date = msg.date
             message.edit_date = msg.edit_date
             message.text = msg.message
-            # message.photo = await self.get_photo(msg, compute_media_hashes)
-            # message.photo_id = message.photo.id if message.photo is not None else None
-            # message.video = await self.get_video(msg, compute_media_hashes)
-            # message.video_id = message.video.id if message.video is not None else None
+            message.photo = await self.get_photo(msg, compute_media_hashes)
+            message.photo_id = message.photo.id if message.photo is not None else None
+            message.video = await self.get_video(msg, compute_media_hashes)
+            message.video_id = message.video.id if message.video is not None else None
             message.reactions = self.get_reactions(msg)
             message.num_views = msg.views if msg.views is not None else 0
             message.num_forwards = msg.forwards if msg.forwards is not None else 0
