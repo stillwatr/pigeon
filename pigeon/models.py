@@ -9,9 +9,9 @@ class TelegramObject:
     """
     TODO
     """
-    id: int
+    id: str
 
-    def __init__(self, id: int = None) -> None:
+    def __init__(self, id: str = None) -> None:
         self.id = id
 
 # ==================================================================================================
@@ -28,7 +28,7 @@ class Chat(TelegramObject):
 
     def __init__(
             self,
-            id: int = None,
+            id: str = None,
             name: str = None,
             verified: bool = None,
             restricted: bool = None,
@@ -54,7 +54,7 @@ class User(Chat):
 
     def __init__(
             self,
-            id: int = None,
+            id: str = None,
             first_name: str = None,
             last_name: str = None,
             user_name: str = None,
@@ -107,7 +107,7 @@ class Group(Chat):
 
     def __init__(
             self,
-            id: int = None,
+            id: str = None,
             name: str = None,
             creation_date: datetime.datetime = None,
             deactivated: bool = None,
@@ -146,7 +146,7 @@ class Channel(Chat):
 
     def __init__(
             self,
-            id: int = None,
+            id: str = None,
             name: str = None,
             creation_date: datetime.dateime = None,
             verified: bool = None,
@@ -181,36 +181,38 @@ class Message(TelegramObject):
     """
     TODO
     """
-    chat_id: int
-    from_chat: Chat
+    chat_id: str
+    from_chat_id: str
+    from_chat_type: str
     post_date: datetime.datetime
     edit_date: datetime.datetime
     status_message_type: str
     text: str
-    photo_id: int
+    photo_id: str
     photo: Photo
-    video_id: int
+    video_id: str
     video: Video
-    reactions: list[tuple]  # TODO: Introduce model for reactions?
     num_views: int
     num_forwards: int
     num_replies: int
     group_id: str
     reply_to_msg_id: str
-    forward_from_chat: Chat
+    forward_from_chat_id: str
+    forward_from_chat_type: str
 
     def __init__(
             self,
-            id: int = None,
-            chat_id: int = None,
-            from_chat: Chat = None,
+            id: str = None,
+            chat_id: str = None,
+            from_chat_id: str = None,
+            from_chat_type: str = None,
             post_date: datetime.datetime = None,
             edit_date: datetime.datetime = None,
             status_message_type: str = None,
             text: str = None,
-            photo_id: int = None,
+            photo_id: str = None,
             photo: Photo = None,
-            video_id: int = None,
+            video_id: str = None,
             video: Video = None,
             reactions: list[tuple] = None,
             num_views: int = None,
@@ -218,13 +220,15 @@ class Message(TelegramObject):
             num_replies: int = None,
             group_id: str = None,
             reply_to_msg_id: str = None,
-            forward_from_chat: Chat = None) -> None:
+            forward_from_chat_id: str = None,
+            forward_from_chat_type: str = None) -> None:
         """
         TODO
         """
         super().__init__(id)
         self.chat_id = chat_id
-        self.from_chat = from_chat
+        self.from_chat_id = from_chat_id
+        self.from_chat_type = from_chat_type
         self.post_date = post_date
         self.edit_date = edit_date
         self.status_message_type = status_message_type
@@ -239,7 +243,8 @@ class Message(TelegramObject):
         self.num_replies = num_replies
         self.group_id = group_id
         self.reply_to_msg_id = reply_to_msg_id
-        self.forward_from_chat = forward_from_chat
+        self.forward_from_chat_id = forward_from_chat_id
+        self.forward_from_chat_type = forward_from_chat_type
 
     def __str__(self) -> str:
         """
@@ -248,7 +253,8 @@ class Message(TelegramObject):
         return "Message(" \
                f"id: {self.id}; " \
                f"chat_id: {self.chat_id}; " \
-               f"from_chat: {repr(self.from_chat)}; " \
+               f"from_chat_id: {self.from_chat_id}; " \
+               f"from_chat_type: {self.from_chat_type}; " \
                f"post_date: {self.post_date}; " \
                f"edit_date: {self.edit_date}; " \
                f"status_message_type: {self.status_message_type}; " \
@@ -261,7 +267,8 @@ class Message(TelegramObject):
                f"num_replies: {self.num_replies}; " \
                f"group_id: {self.group_id}; " \
                f"reply_to_msg_id: {self.reply_to_msg_id}; " \
-               f"forward_from_chat: {repr(self.forward_from_chat)})"
+               f"forward_from_chat_id: {self.forward_from_chat_id}; " \
+               f"forward_from_chat_type: {self.forward_from_chat_type})"
 
     def __repr__(self) -> str:
         """
@@ -283,7 +290,7 @@ class Photo(TelegramObject):
 
     def __init__(
             self,
-            id: int = None,
+            id: str = None,
             size: int = None,
             width: int = None,
             height: int = None,
@@ -330,7 +337,7 @@ class Video(TelegramObject):
 
     def __init__(
             self,
-            id: int = None,
+            id: str = None,
             mime_type: str = None,
             size: int = None,
             duration: int = None,

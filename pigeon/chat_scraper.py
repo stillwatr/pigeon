@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 import telethon
+import typing
 
 import pigeon.models as models
 import pigeon.utils as utils
@@ -60,7 +61,7 @@ class TelegramChatScraper:
 
         return chats
 
-    async def get_users(self, chat_id: int) -> list[models.User]:
+    async def get_users(self, chat_id: str) -> list[models.User]:
         """
         TODO
         """
@@ -72,7 +73,7 @@ class TelegramChatScraper:
 
         # Scrape the users of the specified chat.
         users: list[models.User] = []
-        async for participant in self.client.iter_participants(chat_id):
+        async for participant in self.client.iter_participants(int(chat_id)):
             # Ignore all non-messages.
             if not isinstance(participant, telethon.types.User):
                 continue
@@ -81,10 +82,9 @@ class TelegramChatScraper:
 
         return users
 
-
     async def get_messages(
             self,
-            chat_id: int,
+            chat_id: str,
             compute_media_hashes: bool = False) -> list[models.Message]:
         """
         TODO
@@ -98,29 +98,30 @@ class TelegramChatScraper:
         # Scrape the messages of the specified chat.
         # NOTE: Passing `reverse=True` to iter_messages() sorts the messages from old to new.
         messages: list[models.Message] = []
-        async for msg in self.client.iter_messages(chat_id, reverse=True):
+        async for msg in self.client.iter_messages(int(chat_id), reverse=True):
             # Ignore all non-messages.
             if not isinstance(msg, telethon.types.Message):
                 continue
 
             message = models.Message()
-            message.id = msg.id
-            message.chat_id = chat_id
-            message.from_chat = await self.get_from_chat(msg)
+            message.id = str(msg.id)
+            message.chat_id = str(chat_id)
+            message.from_chat_id, message.from_chat_type = self.get_from_chat(msg)
             message.post_date = msg.date
             message.edit_date = msg.edit_date
             message.text = msg.message
             message.photo = await self.get_photo(msg, compute_media_hashes)
-            message.photo_id = message.photo.id if message.photo is not None else None
+            message.photo_id = str(message.photo.id) if message.photo is not None else None
             message.video = await self.get_video(msg, compute_media_hashes)
-            message.video_id = message.video.id if message.video is not None else None
+            message.video_id = str(message.video.id) if message.video is not None else None
             message.reactions = self.get_reactions(msg)
             message.num_views = msg.views if msg.views is not None else 0
             message.num_forwards = msg.forwards if msg.forwards is not None else 0
             message.num_replies = msg.replies.replies if msg.replies is not None else 0
-            message.group_id = msg.grouped_id
-            message.reply_to_msg_id = msg.reply_to.reply_to_msg_id if msg.reply_to else None
-            message.forward_from_chat = await self.get_forward_from_chat(msg)
+            message.group_id = str(msg.grouped_id) if msg.grouped_id is not None else None
+            message.reply_to_msg_id = str(msg.reply_to.reply_to_msg_id) if msg.reply_to else None
+            message.forward_from_chat_id, message.forward_from_chat_type = \
+                self.get_forward_from_chat(msg)
 
             messages.append(message)
 
@@ -130,7 +131,7 @@ class TelegramChatScraper:
 
     async def get_photos(
             self,
-            chat_id: int,
+            chat_id: str,
             compute_hashes: bool = False) -> list[models.Photo]:
         """
         TODO
@@ -144,7 +145,7 @@ class TelegramChatScraper:
         # Scrape the photos posted in the specified chat.
         # NOTE: Passing `reverse=True` to iter_messages() sorts the messages from old to new.
         photos: list[models.Photo] = []
-        async for msg in self.client.iter_messages(chat_id, reverse=True):
+        async for msg in self.client.iter_messages(int(chat_id), reverse=True):
             photo: models.Photo = await self.get_photo(msg, compute_hashes)
             if photo is not None:
                 photos.append(photo)
@@ -172,7 +173,7 @@ class TelegramChatScraper:
         if p is None:
             return None
 
-        photo = models.Photo(id=p.id)
+        photo = models.Photo(id=str(p.id))
 
         # There may be different sizes of the same photo, stored in `p.sizes` and ordered by size
         # in ascending order. Use the photo with the largest size (= the last element in p.sizes).
@@ -199,7 +200,7 @@ class TelegramChatScraper:
 
     async def get_videos(
             self,
-            chat_id: int,
+            chat_id: str,
             compute_thumb_hashes: bool = False) -> list[models.Video]:
         """
         TODO
@@ -213,7 +214,7 @@ class TelegramChatScraper:
         # Scrape the videos posted in the specified chat.
         # NOTE: Passing `reverse=True` to iter_messages() sorts the messages from old to new.
         videos: list[models.Video] = []
-        async for msg in self.client.iter_messages(chat_id, reverse=True):
+        async for msg in self.client.iter_messages(int(chat_id), reverse=True):
             video: models.Video = await self.get_video(msg, compute_thumb_hashes)
             if video is not None:
                 videos.append(video)
@@ -246,7 +247,7 @@ class TelegramChatScraper:
             return None
 
         video: models.Video = models.Video()
-        video.id = doc.id
+        video.id = str(doc.id)
         video.mime_type = doc.mime_type
         video.size = doc.size
 
@@ -296,80 +297,49 @@ class TelegramChatScraper:
 
     # ==============================================================================================
 
-    async def get_from_chat(self, msg: telethon.types.Message) -> models.Chat:
+    def get_from_chat(self, msg: telethon.types.Message) -> typing.Tuple[str, str]:
         """
         TODO
         """
         assert msg is not None, "No message given."
 
-        from_id = msg.from_id
-        if from_id is None:
-            if isinstance(msg.peer_id, telethon.types.PeerChannel):
-                from_id = msg.peer_id.channel_id
-            elif isinstance(msg.peer_id, telethon.types.PeerChat):
-                from_id = msg.peer_id.chat_id
-            elif isinstance(msg.peer_id, telethon.types.PeerUser):
-                from_id = msg.peer_id.user_id
+        from_id = msg.from_id or msg.peer_id
+        if isinstance(from_id, telethon.types.PeerChannel):
+            return from_id.channel_id, "channel"
 
-        return models.Chat(id=from_id)
+        if isinstance(from_id, telethon.types.PeerChat):
+            return from_id.chat_id, "group"
 
-        # TODO: The following results in FloodwaitErrors.
-        # try:
-        #     entity = await self.client.get_entity(from_id)
-        # except telethon.errors.rpcerrorlist.ChannelPrivateError:
-        #     # The chat is private.
-        #     return models.Chat(id=msg.from_id)
+        if isinstance(from_id, telethon.types.PeerUser):
+            return from_id.user_id, "user"
 
-        # if isinstance(entity, telethon.types.User):
-        #     return self.entity_to_user(entity)
-
-        # if isinstance(entity, telethon.types.Chat) \
-        #     or getattr(entity, "megagroup", False) \
-        #         or getattr(entity, "gigagroup", False):
-        #     return self.entity_to_group(entity)
-
-        # if isinstance(entity, telethon.types.Channel):
-        #     return self.entity_to_channel(entity)
-
-        # return None
+        return None, None
 
     # TODO: Merge with get_from_chat()
-    async def get_forward_from_chat(self, msg: telethon.types.Message) -> models.Chat:
+    def get_forward_from_chat(self, msg: telethon.types.Message) -> typing.Tuple[str, str]:
         """
         TODO
         """
         assert msg is not None, "No message given."
 
         if msg.fwd_from is None:
-            return None
+            return None, None
 
         # A forwarded chat can hide its identity, in which case from_id is None.
+        if msg.fwd_from.from_id is None:
+            return msg.fwd_from.from_name, None
+
         from_id = msg.fwd_from.from_id
-        if from_id is None:
-            return models.Chat(name=msg.fwd_from.from_name)
+        if isinstance(from_id, telethon.types.PeerChannel):
+            return from_id.channel_id, "channel"
 
-        return models.Chat(id=from_id)
+        if isinstance(from_id, telethon.types.PeerChat):
+            return from_id.chat_id, "group"
 
-        # TODO: The following results in FloodWaitErrors.
-        # Obtain the "from" entity (= user, channel or group).
-        # try:
-        #     entity = await self.client.get_entity(from_id)
-        # except telethon.errors.rpcerrorlist.ChannelPrivateError:
-        #     # The chat is private.
-        #     return models.Chat(id=msg.fwd_from.from_id, name=msg.fwd_from.from_name)
+        if isinstance(from_id, telethon.types.PeerUser):
+            return from_id.user_id, "user"
 
-        # if isinstance(entity, telethon.types.User):
-        #     return self.entity_to_user(entity)
-
-        # if isinstance(entity, telethon.types.Chat) \
-        #     or getattr(entity, "megagroup", False) \
-        #         or getattr(entity, "gigagroup", False):
-        #     return self.entity_to_group(entity)
-
-        # if isinstance(entity, telethon.types.Channel):
-        #     return self.entity_to_channel(entity)
-
-        # return None
+        return None, None
 
     # ==============================================================================================
 
@@ -379,7 +349,7 @@ class TelegramChatScraper:
         TODO
         """
         return models.User(
-            id=entity.id,
+            str(entity.id),
             first_name=entity.first_name,
             last_name=entity.last_name,
             user_name=entity.username,
@@ -398,7 +368,7 @@ class TelegramChatScraper:
         TODO
         """
         return models.Group(
-            id=entity.id,
+            id=str(entity.id),
             name=entity.title,
             creation_date=entity.date,
             deactivated=getattr(entity, "deactivated", False),
@@ -410,7 +380,7 @@ class TelegramChatScraper:
         TODO
         """
         return models.Channel(
-            id=entity.id,
+            id=str(entity.id),
             name=entity.title,
             creation_date=entity.date,
             verified=entity.verified,
