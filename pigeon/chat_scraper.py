@@ -4,8 +4,8 @@ import math
 import telethon
 import typing
 
-import pigeon.models as models
-import pigeon.utils as utils
+import pigeon.models
+import pigeon.utils
 
 # ==================================================================================================
 
@@ -24,7 +24,7 @@ class TelegramChatScraper:
             api_hash=telethon_api_hash,
             session=telethon_session
         )
-        self.chats: list[models.Chat] = []
+        self.chats: list[pigeon.models.Chat] = []
 
     async def start(self) -> TelegramChatScraper:
         """
@@ -45,51 +45,49 @@ class TelegramChatScraper:
 
         return self
 
-    async def get_chats(self) -> list[models.Chat]:
+    async def get_chats(self) -> list[pigeon.models.Chat]:
         """
         TODO
         """
-        chats: list[models.Chat] = []
+        chats: list[pigeon.models.Chat] = []
 
         for dialog in await self.client.get_dialogs():
             if dialog.is_user:
-                chats.append(self.entity_to_user(dialog.entity))
+                chats.append(TelegramChatScraper.entity_to_user(dialog.entity))
             elif dialog.is_group:
-                chats.append(self.entity_to_group(dialog.entity))
+                chats.append(TelegramChatScraper.entity_to_group(dialog.entity))
             elif dialog.is_channel:
-                chats.append(self.entity_to_channel(dialog.entity))
+                chats.append(TelegramChatScraper.entity_to_channel(dialog.entity))
 
         return chats
 
-    async def get_users(self, chat_id: str) -> list[models.User]:
+    async def get_users(self, chat_id: str) -> list[pigeon.models.User]:
         """
         TODO
         """
-        assert chat_id is not None, "No chat id given."
+        assert chat_id is not None, "no chat id given"
 
         # Start the client if necessary.
         if not self.client.is_connected():
             await self.start()
 
         # Scrape the users of the specified chat.
-        users: list[models.User] = []
-        async for participant in self.client.iter_participants(int(chat_id)):
-            # Ignore all non-messages.
+        users: list[pigeon.models.User] = []
+        async for participant in self.client.iter_participants(chat_id):
             if not isinstance(participant, telethon.types.User):
                 continue
-
-            users.append(self.entity_to_user(participant))
+            users.append(TelegramChatScraper.entity_to_user(participant))
 
         return users
 
     async def get_messages(
             self,
-            chat_id: str,
-            compute_media_hashes: bool = False) -> list[models.Message]:
+            chat_id: int,
+            compute_media_hashes: bool = False) -> list[pigeon.models.Message]:
         """
         TODO
         """
-        assert chat_id is not None, "No chat id given."
+        assert chat_id is not None, "no chat id given"
 
         # Start the client if necessary.
         if not self.client.is_connected():
@@ -97,31 +95,29 @@ class TelegramChatScraper:
 
         # Scrape the messages of the specified chat.
         # NOTE: Passing `reverse=True` to iter_messages() sorts the messages from old to new.
-        messages: list[models.Message] = []
-        async for msg in self.client.iter_messages(int(chat_id), reverse=True):
-            # Ignore all non-messages.
+        messages: list[pigeon.models.Message] = []
+        async for msg in self.client.iter_messages(chat_id, reverse=True):
             if not isinstance(msg, telethon.types.Message):
                 continue
 
-            message = models.Message()
-            message.id = str(msg.id)
-            message.chat_id = str(chat_id)
+            message = pigeon.models.Message()
+            message.id = msg.id
+            message.chat_id = chat_id
             message.from_chat_id, message.from_chat_type = self.get_from_chat(msg)
             message.post_date = msg.date
             message.edit_date = msg.edit_date
             message.text = msg.message
             message.photo = await self.get_photo(msg, compute_media_hashes)
-            message.photo_id = str(message.photo.id) if message.photo is not None else None
+            message.photo_id = message.photo.id if message.photo is not None else None
             message.video = await self.get_video(msg, compute_media_hashes)
-            message.video_id = str(message.video.id) if message.video is not None else None
+            message.video_id = message.video.id if message.video is not None else None
             message.reactions = self.get_reactions(msg)
             message.num_views = msg.views if msg.views is not None else 0
             message.num_forwards = msg.forwards if msg.forwards is not None else 0
             message.num_replies = msg.replies.replies if msg.replies is not None else 0
-            message.group_id = str(msg.grouped_id) if msg.grouped_id is not None else None
-            message.reply_to_msg_id = str(msg.reply_to.reply_to_msg_id) if msg.reply_to else None
-            message.forward_from_chat_id, message.forward_from_chat_type = \
-                self.get_forward_from_chat(msg)
+            message.group_id = msg.grouped_id if msg.grouped_id is not None else None
+            message.reply_to_msg_id = msg.reply_to.reply_to_msg_id if msg.reply_to else None
+            message.fwd_from_chat_id, message.fwd_from_chat_type = self.get_fwd_from_chat(msg)
 
             messages.append(message)
 
@@ -131,12 +127,12 @@ class TelegramChatScraper:
 
     async def get_photos(
             self,
-            chat_id: str,
-            compute_hashes: bool = False) -> list[models.Photo]:
+            chat_id: int,
+            compute_hashes: bool = False) -> list[pigeon.models.Photo]:
         """
         TODO
         """
-        assert chat_id is not None, "No chat id given."
+        assert chat_id is not None, "no chat id given"
 
         # Start the client if necessary.
         if not self.client.is_connected():
@@ -144,9 +140,12 @@ class TelegramChatScraper:
 
         # Scrape the photos posted in the specified chat.
         # NOTE: Passing `reverse=True` to iter_messages() sorts the messages from old to new.
-        photos: list[models.Photo] = []
-        async for msg in self.client.iter_messages(int(chat_id), reverse=True):
-            photo: models.Photo = await self.get_photo(msg, compute_hashes)
+        photos: list[pigeon.models.Photo] = []
+        async for msg in self.client.iter_messages(chat_id, reverse=True):
+            if not isinstance(msg, telethon.types.Message):
+                continue
+
+            photo = await self.get_photo(msg, compute_hashes)
             if photo is not None:
                 photos.append(photo)
 
@@ -155,11 +154,11 @@ class TelegramChatScraper:
     async def get_photo(
             self,
             msg: telethon.types.Message,
-            compute_hash: bool = False) -> models.Photo:
+            compute_hash: bool = False) -> pigeon.models.Photo | None:
         """
         TODO
         """
-        assert msg is not None, "No message given."
+        assert msg is not None, "no message given"
 
         # The message does not contain a photo if it has no "media" attribute.
         if not hasattr(msg, "media"):
@@ -173,7 +172,7 @@ class TelegramChatScraper:
         if p is None:
             return None
 
-        photo = models.Photo(id=str(p.id))
+        photo = pigeon.models.Photo(id=p.id)
 
         # There may be different sizes of the same photo, stored in `p.sizes` and ordered by size
         # in ascending order. Use the photo with the largest size (= the last element in p.sizes).
@@ -190,7 +189,7 @@ class TelegramChatScraper:
             if compute_hash:
                 try:
                     photo_bytes = await msg.download_media(file=bytes, thumb=-1)
-                    photo.hash = utils.compute_image_hash(photo_bytes)
+                    photo.hash = pigeon.utils.compute_image_hash(photo_bytes)
                 except Exception as e:
                     print("Could not download thumbnail.", e)
 
@@ -200,12 +199,12 @@ class TelegramChatScraper:
 
     async def get_videos(
             self,
-            chat_id: str,
-            compute_thumb_hashes: bool = False) -> list[models.Video]:
+            chat_id: int,
+            compute_thumb_hashes: bool = False) -> list[pigeon.models.Video]:
         """
         TODO
         """
-        assert chat_id is not None, "No chat id given."
+        assert chat_id is not None, "no chat id given"
 
         # Start the client if necessary.
         if not self.client.is_connected():
@@ -213,9 +212,12 @@ class TelegramChatScraper:
 
         # Scrape the videos posted in the specified chat.
         # NOTE: Passing `reverse=True` to iter_messages() sorts the messages from old to new.
-        videos: list[models.Video] = []
-        async for msg in self.client.iter_messages(int(chat_id), reverse=True):
-            video: models.Video = await self.get_video(msg, compute_thumb_hashes)
+        videos: list[pigeon.models.Video] = []
+        async for msg in self.client.iter_messages(chat_id, reverse=True):
+            if not isinstance(msg, telethon.types.Message):
+                continue
+
+            video = await self.get_video(msg, compute_thumb_hashes)
             if video is not None:
                 videos.append(video)
 
@@ -224,7 +226,7 @@ class TelegramChatScraper:
     async def get_video(
             self,
             msg: telethon.types.Message,
-            compute_thumb_hash: bool = False) -> models.Video:
+            compute_thumb_hash: bool = False) -> pigeon.models.Video | None:
         """
         TODO
         """
@@ -246,8 +248,8 @@ class TelegramChatScraper:
         if "video" not in doc.mime_type:
             return None
 
-        video: models.Video = models.Video()
-        video.id = str(doc.id)
+        video = pigeon.models.Video()
+        video.id = doc.id
         video.mime_type = doc.mime_type
         video.size = doc.size
 
@@ -266,7 +268,7 @@ class TelegramChatScraper:
                     if isinstance(thumb, telethon.types.PhotoSize):
                         try:
                             thumbnail_bytes = await msg.download_media(file=bytes, thumb=thumb)
-                            video.thumb_hash = utils.compute_image_hash(thumbnail_bytes)
+                            video.thumb_hash = pigeon.utils.compute_image_hash(thumbnail_bytes)
                         except Exception as e:
                             print("Could not download thumbnail.", e)
                         break
@@ -275,7 +277,7 @@ class TelegramChatScraper:
 
     # ==============================================================================================
 
-    def get_reactions(self, msg: telethon.types.Message) -> list[tuple]:
+    def get_reactions(self, msg: telethon.types.Message) -> list[tuple] | None:
         """
         TODO
         """
@@ -295,15 +297,14 @@ class TelegramChatScraper:
 
         return reactions
 
-    # ==============================================================================================
-
-    def get_from_chat(self, msg: telethon.types.Message) -> typing.Tuple[str, str]:
+    def get_from_chat(self, msg: telethon.types.Message) -> typing.Tuple[int | None, str | None]:
         """
         TODO
         """
-        assert msg is not None, "No message given."
+        assert msg is not None, "no message given"
 
         from_id = msg.from_id or msg.peer_id
+
         if isinstance(from_id, telethon.types.PeerChannel):
             return from_id.channel_id, "channel"
 
@@ -315,41 +316,40 @@ class TelegramChatScraper:
 
         return None, None
 
-    # TODO: Merge with get_from_chat()
-    def get_forward_from_chat(self, msg: telethon.types.Message) -> typing.Tuple[str, str]:
+    def get_fwd_from_chat(self, m: telethon.types.Message) -> typing.Tuple[str | None, str | None]:
         """
         TODO
         """
-        assert msg is not None, "No message given."
+        assert m is not None, "no message given"
 
-        if msg.fwd_from is None:
+        if m.fwd_from is None:
             return None, None
 
-        # A forwarded chat can hide its identity, in which case from_id is None.
-        if msg.fwd_from.from_id is None:
-            return msg.fwd_from.from_name, None
+        from_id = m.fwd_from.from_id
 
-        from_id = msg.fwd_from.from_id
+        # A forwarded chat can hide its identity, in which case from_id is None.
+        if from_id is None:
+            return m.fwd_from.from_name, None
+
         if isinstance(from_id, telethon.types.PeerChannel):
-            return from_id.channel_id, "channel"
+            return str(from_id.channel_id), "channel"
 
         if isinstance(from_id, telethon.types.PeerChat):
-            return from_id.chat_id, "group"
+            return str(from_id.chat_id), "group"
 
         if isinstance(from_id, telethon.types.PeerUser):
-            return from_id.user_id, "user"
+            return str(from_id.user_id), "user"
 
         return None, None
 
     # ==============================================================================================
 
-    # TODO: Can be static
-    def entity_to_user(self, entity: telethon.types.User) -> models.User:
+    def entity_to_user(entity: telethon.types.User) -> pigeon.models.User:
         """
         TODO
         """
-        return models.User(
-            str(entity.id),
+        return pigeon.models.User(
+            entity.id,
             first_name=entity.first_name,
             last_name=entity.last_name,
             user_name=entity.username,
@@ -362,25 +362,23 @@ class TelegramChatScraper:
             restricted_reason=entity.restriction_reason
         )
 
-    # TODO: Can be static
-    def entity_to_group(self, entity: telethon.types.Chat) -> models.Group:
+    def entity_to_group(entity: telethon.types.Chat) -> pigeon.models.Group:
         """
         TODO
         """
-        return models.Group(
-            id=str(entity.id),
+        return pigeon.models.Group(
+            id=entity.id,
             name=entity.title,
             creation_date=entity.date,
             deactivated=getattr(entity, "deactivated", False),
         )
 
-    # TODO: Can be static
-    def entity_to_channel(self, entity: telethon.types.Channel) -> models.Channel:
+    def entity_to_channel(entity: telethon.types.Channel) -> pigeon.models.Channel:
         """
         TODO
         """
-        return models.Channel(
-            id=str(entity.id),
+        return pigeon.models.Channel(
+            id=entity.id,
             name=entity.title,
             creation_date=entity.date,
             verified=entity.verified,

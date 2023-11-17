@@ -9,9 +9,9 @@ class TelegramObject:
     """
     TODO
     """
-    id: str
+    id: int
 
-    def __init__(self, id: str = None) -> None:
+    def __init__(self, id: int | None = None) -> None:
         self.id = id
 
 # ==================================================================================================
@@ -28,11 +28,11 @@ class Chat(TelegramObject):
 
     def __init__(
             self,
-            id: str = None,
-            name: str = None,
-            verified: bool = None,
-            restricted: bool = None,
-            restricted_reason: str = None) -> None:
+            id: int | None = None,
+            name: str | None = None,
+            verified: bool | None = None,
+            restricted: bool | None = None,
+            restricted_reason: str | None = None) -> None:
         super().__init__(id)
         self.name = name
         self.verified = verified
@@ -54,17 +54,17 @@ class User(Chat):
 
     def __init__(
             self,
-            id: str = None,
-            first_name: str = None,
-            last_name: str = None,
-            user_name: str = None,
-            phone: str = None,
-            lang_code: str = None,
-            verified: bool = None,
-            deleted: bool = None,
-            is_bot: bool = None,
-            restricted: bool = None,
-            restricted_reason: str = None) -> None:
+            id: int | None = None,
+            first_name: str | None = None,
+            last_name: str | None = None,
+            user_name: str | None = None,
+            phone: str | None = None,
+            lang_code: str | None = None,
+            verified: bool | None = None,
+            deleted: bool | None = None,
+            is_bot: bool | None = None,
+            restricted: bool | None = None,
+            restricted_reason: str | None = None) -> None:
         super().__init__(id, user_name, verified, restricted, restricted_reason)
         self.first_name = first_name
         self.last_name = last_name
@@ -107,13 +107,13 @@ class Group(Chat):
 
     def __init__(
             self,
-            id: str = None,
-            name: str = None,
-            creation_date: datetime.datetime = None,
-            deactivated: bool = None,
-            verified: bool = None,
-            restricted: bool = None,
-            restricted_reason: str = None) -> None:
+            id: int | None = None,
+            name: str | None = None,
+            creation_date: datetime.datetime | None = None,
+            deactivated: bool | None = None,
+            verified: bool | None = None,
+            restricted: bool | None = None,
+            restricted_reason: str | None = None) -> None:
         super().__init__(id, name, verified, restricted, restricted_reason)
         self.creation_date = creation_date
         self.deactivated = deactivated
@@ -146,12 +146,12 @@ class Channel(Chat):
 
     def __init__(
             self,
-            id: str = None,
-            name: str = None,
-            creation_date: datetime.dateime = None,
-            verified: bool = None,
-            restricted: bool = None,
-            restricted_reason: str = None) -> None:
+            id: int | None = None,
+            name: str | None = None,
+            creation_date: datetime.datetime | None = None,
+            verified: bool | None = None,
+            restricted: bool | None = None,
+            restricted_reason: str | None = None) -> None:
         super().__init__(id, name, verified, restricted, restricted_reason)
         self.name = name
         self.creation_date = creation_date
@@ -181,47 +181,47 @@ class Message(TelegramObject):
     """
     TODO
     """
-    chat_id: str
-    from_chat_id: str
+    chat_id: int
+    from_chat_id: int
     from_chat_type: str
     post_date: datetime.datetime
     edit_date: datetime.datetime
     status_message_type: str
     text: str
-    photo_id: str
+    photo_id: int
     photo: Photo
-    video_id: str
+    video_id: int
     video: Video
     num_views: int
     num_forwards: int
     num_replies: int
-    group_id: str
-    reply_to_msg_id: str
-    forward_from_chat_id: str
-    forward_from_chat_type: str
+    group_id: int
+    reply_to_msg_id: int
+    fwd_from_chat_id: str
+    fwd_from_chat_type: str
 
     def __init__(
             self,
-            id: str = None,
-            chat_id: str = None,
-            from_chat_id: str = None,
-            from_chat_type: str = None,
-            post_date: datetime.datetime = None,
-            edit_date: datetime.datetime = None,
-            status_message_type: str = None,
-            text: str = None,
-            photo_id: str = None,
-            photo: Photo = None,
-            video_id: str = None,
-            video: Video = None,
-            reactions: list[tuple] = None,
-            num_views: int = None,
-            num_forwards: int = None,
-            num_replies: int = None,
-            group_id: str = None,
-            reply_to_msg_id: str = None,
-            forward_from_chat_id: str = None,
-            forward_from_chat_type: str = None) -> None:
+            id: int | None = None,
+            chat_id: int | None = None,
+            from_chat_id: int | None = None,
+            from_chat_type: str | None = None,
+            post_date: datetime.datetime | None = None,
+            edit_date: datetime.datetime | None = None,
+            status_message_type: str | None = None,
+            text: str | None = None,
+            photo_id: int | None = None,
+            photo: Photo | None = None,
+            video_id: int | None = None,
+            video: Video | None = None,
+            reactions: list[tuple] | None = None,
+            num_views: int | None = None,
+            num_forwards: int | None = None,
+            num_replies: int | None = None,
+            group_id: int | None = None,
+            reply_to_msg_id: int | None = None,
+            fwd_from_chat_id: str | None = None,
+            fwd_from_chat_type: str | None = None) -> None:
         """
         TODO
         """
@@ -243,8 +243,8 @@ class Message(TelegramObject):
         self.num_replies = num_replies
         self.group_id = group_id
         self.reply_to_msg_id = reply_to_msg_id
-        self.forward_from_chat_id = forward_from_chat_id
-        self.forward_from_chat_type = forward_from_chat_type
+        self.fwd_from_chat_id = fwd_from_chat_id
+        self.fwd_from_chat_type = fwd_from_chat_type
 
     def __str__(self) -> str:
         """
@@ -267,8 +267,8 @@ class Message(TelegramObject):
                f"num_replies: {self.num_replies}; " \
                f"group_id: {self.group_id}; " \
                f"reply_to_msg_id: {self.reply_to_msg_id}; " \
-               f"forward_from_chat_id: {self.forward_from_chat_id}; " \
-               f"forward_from_chat_type: {self.forward_from_chat_type})"
+               f"fwd_from_chat_id: {self.fwd_from_chat_id}; " \
+               f"fwd_from_chat_type: {self.fwd_from_chat_type})"
 
     def __repr__(self) -> str:
         """
@@ -290,11 +290,11 @@ class Photo(TelegramObject):
 
     def __init__(
             self,
-            id: str = None,
-            size: int = None,
-            width: int = None,
-            height: int = None,
-            hash: int = None) -> None:
+            id: int | None = None,
+            size: int | None = None,
+            width: int | None = None,
+            height: int | None = None,
+            hash: int | None = None) -> None:
         """
         TODO
         """
@@ -337,13 +337,13 @@ class Video(TelegramObject):
 
     def __init__(
             self,
-            id: str = None,
-            mime_type: str = None,
-            size: int = None,
-            duration: int = None,
-            width: int = None,
-            height: int = None,
-            thumb_hash: int = None) -> None:
+            id: int | None = None,
+            mime_type: str | None = None,
+            size: int | None = None,
+            duration: int | None = None,
+            width: int | None = None,
+            height: int | None = None,
+            thumb_hash: int | None = None) -> None:
         """
         TODO
         """
@@ -385,7 +385,11 @@ class InlineMessageButton():
     url: str
     callback_data: str | object
 
-    def __init__(self, label: str, callback_data: str | object = None, url: str = None) -> None:
+    def __init__(
+            self,
+            label: str,
+            callback_data: str | object = None,
+            url: str | None = None) -> None:
         """
         TODO
         """
