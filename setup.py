@@ -11,6 +11,7 @@ setup(
       "asyncio>=3.4.3",
       "ImageHash>=4.3.1",
       "python-telegram-bot>=20.6",
-      "Telethon>=1.31.1"
+      "Telethon>=1.31.1",
+      "tg-file-id>=0.0.4"
     ]
 )
