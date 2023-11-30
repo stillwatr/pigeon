@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import datetime
+import uuid
+
+import pigeon.models
 
 # ==================================================================================================
 
 
-class TelegramObject:
+class TelegramEntity:
     """
     TODO
     """
@@ -17,7 +20,7 @@ class TelegramObject:
 # ==================================================================================================
 
 
-class Chat(TelegramObject):
+class Chat(TelegramEntity):
     """
     TODO
     """
@@ -177,7 +180,7 @@ class Channel(Chat):
 # ==================================================================================================
 
 
-class Message(TelegramObject):
+class Message(TelegramEntity):
     """
     TODO
     """
@@ -279,7 +282,36 @@ class Message(TelegramObject):
 # ==================================================================================================
 
 
-class Photo(TelegramObject):
+class Command(Message):
+    """
+    TODO
+    """
+    command: str
+    args: list[str]
+
+    def __str__(self) -> str:
+        """
+        TODO
+        """
+        return "Command(" \
+               f"id: {self.id}; " \
+               f"chat_id: {self.chat_id}; " \
+               f"from_chat_id: {self.from_chat_id}; " \
+               f"from_chat_type: {self.from_chat_type}; " \
+               f"post_date: {self.post_date}; " \
+               f"command: {self.command}; " \
+               f"args: {self.args})"
+
+    def __repr__(self) -> str:
+        """
+        TODO
+        """
+        return f"Command(id: {self.id})"
+
+# ==================================================================================================
+
+
+class Photo(TelegramEntity):
     """
     TODO
     """
@@ -324,7 +356,7 @@ class Photo(TelegramObject):
 # ==================================================================================================
 
 
-class Video(TelegramObject):
+class Video(TelegramEntity):
     """
     TODO
     """
@@ -382,17 +414,70 @@ class InlineMessageButton():
     TODO
     """
     label: str
-    url: str
-    callback_data: str | object
+    url: str | None
+    callback_data: str | object | None
 
     def __init__(
             self,
             label: str,
-            callback_data: str | object = None,
-            url: str | None = None) -> None:
+            url: str | None = None,
+            callback_data: str | object | None = None) -> None:
         """
         TODO
         """
         self.label = label
         self.url = url
         self.callback_data = callback_data
+
+
+class CallbackAction:
+    """
+    TODO
+    """
+    name: str
+
+    async def run(self, bot: pigeon.bot.TelegramBot, chat_id: int, params: dict = {}) -> None:
+        """
+        TODO
+        """
+        pass
+
+
+class Callback:
+    """
+    TODO
+    """
+    id: str
+    action_name: str
+    chat_id: int
+    params: dict
+
+    def __init__(
+            self,
+            id: str | None = None,
+            action: CallbackAction | None = None,
+            chat_id: int | None = None,
+            params: dict = {}) -> None:
+        """
+        TODO
+        """
+        self.id = id if id is not None else uuid.uuid4()
+        self.action_name = action.name if action is not None else None
+        self.chat_id = chat_id
+        self.params = params
+
+    def __str__(self) -> str:
+        """
+        TODO
+        """
+        return "Callback(" \
+               f"id: {self.id}; " \
+               f"action_name: {self.action_name}; " \
+               f"chat_id: {self.chat_id}; " \
+               f"params: {self.params})"
+
+    def __repr__(self) -> str:
+        """
+        TODO
+        """
+        return f"Callback(id: {self.id}, action: {self.action_name})"

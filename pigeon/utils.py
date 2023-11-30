@@ -5,6 +5,8 @@ import random
 
 from PIL import Image
 
+import pigeon.models as models
+
 # ==================================================================================================
 
 
@@ -44,6 +46,25 @@ def compute_image_hash(bytes: bytearray, num_bits: int = 64) -> int:
     return hash
 
 # ==================================================================================================
+
+def resolve_chat_id(id: int) -> int:
+    """
+    TODO
+    """
+    if id >= 0:
+        return id
+
+    id = -id
+    if id > 1000000000000:
+        return id - 1000000000000
+    return id
+
+
+def get_message_link(message: models.Message) -> string:
+    """
+    TODO
+    """
+    return f"https://t.me/c/{resolve_chat_id(message.chat_id)}/{message.id}"
 
 
 def unique_id(size: int = 7) -> str:
