@@ -3,7 +3,7 @@ from typing import Any, Tuple
 import telegram as tg
 import telegram.ext as tg_ext
 
-import pigeon.log as log
+import pigeon.logging as logging
 import pigeon.models as models
 
 # ==================================================================================================
@@ -73,11 +73,8 @@ class BotAddedToChatHandler(tg_ext.ChatMemberHandler):
         if not chat:
             return
 
-        chat_id = chat.id
-        if not chat_id:
-            return
-
-        context.update({"chat_id": chat_id, "chat_title": chat.title})
+        # TODO: Pass the whole chat object here. Map the chat to a custom chat object.
+        context.update({"chat_id": chat.id, "chat_title": chat.title})
 
 
 class CommandHandler(tg_ext.MessageHandler):
@@ -177,3 +174,15 @@ class MessageHandler(tg_ext.MessageHandler):
         TODO
         """
         super().__init__(~tg_ext.filters.COMMAND, callback)
+
+
+class CallbackQueryHandler(tg_ext.CallbackQueryHandler):
+    """
+    TODO
+    """
+
+    def __init__(self, callback: tg_ext._utils.types.HandlerCallback):
+        """
+        TODO
+        """
+        super().__init__(callback)

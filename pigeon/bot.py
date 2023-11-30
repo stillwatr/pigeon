@@ -1,11 +1,34 @@
+import asyncio
 import telegram as tg
 import telegram.ext as tg_ext
-import tg_file_id.file_unique_id as tg_file_unique_id
+import typing
+import yaml
 
 import pigeon.handlers as handlers
-import pigeon.log as log
 import pigeon.models as models
 import pigeon.utils as utils
+import pigeon.logging as logging
+
+import pigeon.telegram_bot_entity_mapper as mapper
+
+# ==================================================================================================
+
+
+def action_name(name):
+    def decorator(cls):
+        cls.name = name
+        return cls
+    return decorator
+
+
+def get_action(name: str) -> type[models.BotAction]:
+    """
+    TODO
+    """
+    subclass: type[models.BotAction]
+    for subclass in models.BotAction.__subclasses__():
+        if subclass.name == name:
+            return subclass
 
 # ==================================================================================================
 
@@ -21,15 +44,20 @@ class TelegramBot:
         """
         self.app: tg_ext.Application = tg_ext.ApplicationBuilder().token(token).build()
         self.app.add_handler(handlers.BotAddedToChatHandler(self, self._handle_bot_added_to_chat))
-        # self.app.add_handler(handlers.CommandHandler(self._handle_command))
+        self.app.add_handler(handlers.CommandHandler(self._handle_command))
         self.app.add_handler(handlers.MessageHandler(self._handle_message))
-        # self.app.add_handler(tg_ext.CallbackQueryHandler(self._handle_callback_query))
+        self.app.add_handler(handlers.CallbackQueryHandler(self._handle_callback_query))
 
-        # self.log = logging.getLogger(__file__)
-        # self.log.setLevel(logging.DEBUG)
-        # ch = logging.StreamHandler()
-        # ch.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s : %(message)s"))
-        # self.log.addHandler(ch)
+        self.entity_mapper = mapper.TelegramBotEntityMapper()
+
+        self.log = logging.Log(__file__)
+        self.log.set_level(logging.LogLevel.INFO)
+        console_log_handler = logging.ConsoleLogHandler()
+        console_log_handler.setLevel(logging.LogLevel.DEBUG)
+        self.log.add_handler(console_log_handler)
+        # telegram_log_handler = logging.TelegramLogHandler(self, 1139069550)  # TODO
+        # telegram_log_handler.setLevel(logging.LogLevel.FOCUS)
+        # self.log.add_handler(telegram_log_handler)
 
     def start(self):
         """
@@ -38,16 +66,41 @@ class TelegramBot:
         self.app.run_polling()
 
     # ==============================================================================================
+
+    async def get_name(self) -> int:
+        """
+        TODO
+        """
+        bot = await self.app.bot.get_me()
+        return bot.username
+
+    # ==============================================================================================
     # Handler methods.
 
     async def _handle_bot_added_to_chat(self, update: tg.Update, context: tg_ext.CallbackContext):
         """
         TODO
         """
+        assert update, "no update given"
         assert context, "no context given"
-        await self.on_bot_added_to_chat(context.chat_id)
 
-    async def on_bot_added_to_chat(self, chat_id: int):
+        # FIXME: Implement a permission system.
+        if update.my_chat_member.from_user.id != 1139069550:  # stillwatr
+            return
+
+        chat_id = getattr(context, "chat_id", None)
+        if not isinstance(chat_id, int):
+            # FIXME: Exception handling.
+            return
+
+        chat_title = getattr(context, "chat_title", None)
+        if not isinstance(chat_title, str):
+            # FIXME: Exception handling.
+            return
+
+        await self.on_bot_added_to_chat(chat_id, chat_title)
+
+    async def on_bot_added_to_chat(self, chat_id: int, chat_title: str) -> None:
         """
         TODO
         """
@@ -59,16 +112,29 @@ class TelegramBot:
         """
         TODO
         """
-        assert context, "no context given"
+        assert update, "no update given"
 
-        await self.on_command(
-            cmd=context.cmd,
-            args=context.args,
-            chat_id=context.chat_id,
-            from_chat_id=context.from_chat_id
-        )
+        # FIXME: Implement a permission system.
+        if update.message.from_user.id != 1139069550:  # stillwatr
+            return
 
-    async def on_command(self, cmd: str, args: list[str], chat_id: int, from_chat_id: int):
+        # If the message was posted in a channel, the message is stored in
+        # update.channel_post, otherwise it is stored in update.message.
+        entity = update.channel_post or update.message
+        if not isinstance(entity, tg.Message):
+            # FIXME: Exception handling.
+            return
+
+        try:
+            command = self.entity_mapper.map_command(entity)
+        except Exception as e:
+            # FIXME: Exception handling.
+            self.log.info(e)
+            return
+
+        await self.on_command(command)
+
+    async def on_command(self, command: models.Command):
         """
         TODO
         """
@@ -80,196 +146,376 @@ class TelegramBot:
         """
         TODO
         """
-        assert update, "no context given"
+        assert update, "no update given"
 
-        log.error(update)
-
-        # If the message was posted in a channel, the message is stored in update.channel_post,
-        # otherwise it is stored in update.message.
-        msg = update.channel_post or update.message
-        if not msg:
+        # If the message was posted in a channel, the message is stored in
+        # update.channel_post, otherwise it is stored in update.message.
+        entity = update.channel_post or update.message
+        if not isinstance(entity, tg.Message):
+            # FIXME: Exception handling.
             return
 
-        message = models.Message()
-        message.id = msg.message_id
-        message.chat_id = msg.chat.id if msg.chat else None
-        message.from_chat_id = self.get_from_chat_id(msg)
-        message.from_chat_type = self.get_from_chat_type(msg)
-        message.post_date = msg.date
-        # msg.edit_date = message.edit_date  # TODO
-        message.text = msg.text
-        message.photo = await self.get_photo(msg, compute_hash=True)
-        message.photo_id = message.photo.id if message.photo is not None else None
-        message.video = await self.get_video(msg, compute_hash=True)
-        message.video_id = message.video.id if message.video is not None else None
-        message.group_id = msg.media_group_id
-        message.reply_to_msg_id = msg.reply_to_message.message_id if msg.reply_to_message else None
-        message.fwd_from_chat_id = self.get_fwd_from_chat_id(msg)
-        message.fwd_from_chat_type = self.get_fwd_from_chat_type(msg)
-        message.reply_to_msg_id = msg.reply_to_message.message_id if msg.reply_to_message else None
+        try:
+            message = self.entity_mapper.map_message(entity)
+        except Exception:
+            # FIXME: Exception handling.
+            return
 
-        log.error(message.photo)
-        log.error(message.video)
+        # If the message contains a photo, compute a hash of the photo.
+        if message.photo:
+            try:
+                message.photo.hash = await self.compute_photo_hash(entity)
+            except Exception:
+                # FIXME: Exception handling.
+                pass
+
+        # If the message contains a video, compute a hash of the thumbnail of the video.
+        if message.video:
+            try:
+                message.video.thumb_hash = await self.compute_video_thumb_hash(entity)
+            except Exception:
+                # FIXME: Exception handling.
+                pass
 
         await self.on_message(message)
 
-    async def on_message(self, msg: models.Message):
+    async def on_message(self, message: models.Message):
         """
         TODO
         """
         pass
 
     # ----------------------------------------------------------------------------------------------
+    # Methods related to callbacks.
 
-    # async def _handle_callback_query(self, update: tg.Update, context: tg_ext.CallbackContext):
-    #     """
-    #     TODO
-    #     """
-    #     if not update:
-    #         log.error("No update given.")
-    #         return
+    async def _handle_callback_query(self, update: tg.Update, context: tg_ext.CallbackContext):
+        """
+        TODO
+        """
+        assert update, "no update given"
 
-    #     callback_query = update.callback_query
-    #     if not callback_query:
-    #         log.error("No callback query given.")
-    #         return
+        callback_query = update.callback_query
+        if not isinstance(callback_query, tg.CallbackQuery):
+            # FIXME: Exception handling.
+            return
 
-    #     message = callback_query.message
-    #     if not message:
-    #         log.error("No message given.")
-    #         return
+        # FIXME: Implement a permission system.
+        if update.callback_query.from_user.id != 1139069550:  # stillwatr
+            await callback_query.answer()
+            return
 
-    #     chat = message.chat
-    #     if not chat:
-    #         log.error("No chat given.")
-    #         return
+        callback_id = callback_query.data
+        if callback_id is None:
+            # FIXME: Exception handling.
+            await callback_query.answer()
+            return
 
-    #     from_user = callback_query.from_user
-    #     if not from_user:
-    #         log.error("No from user given.")
-    #         return
+        message = callback_query.message
+        if not isinstance(message, tg.Message):
+            # FIXME: Exception handling.
+            await callback_query.answer()
+            return
 
-    #     data = callback_query.data
-    #     if not data:
-    #         log.error("No data given.")
-    #         return
+        await self.on_callback_query(message.chat_id, callback_id)
+        # TODO: Answer the callback query in the handlers? To specify inividual response texts?
+        await callback_query.answer()
 
-    #     await self.on_callback_query(chat.id, message.id, from_user.id, data)
+    async def on_callback_query(self, chat_id: int, callback_id: str) -> None:
+        """
+        TODO
+        """
+        pass
 
-    #     await callback_query.answer()
+    # ==============================================================================================
+    # TODO: Maybe move the following two methods into an util file.
 
-    # async def on_callback_query(self, chat_id: int, message_id: int, user_id: int, data: any):
-    #     """
-    #     TODO
-    #     """
-    #     pass
+    async def compute_photo_hash(self, message: tg.Message) -> int:
+        """
+        TODO
+        """
+        if not isinstance(message, tg.Message):
+            raise ValueError("no message given")
+
+        if not isinstance(message.photo, tuple):
+            raise ValueError("no photo given")
+
+        if len(message.photo) == 0:
+            raise ValueError("no photo given")
+
+        photo: tg.PhotoSize = message.photo[-1]
+        if not isinstance(photo, tg.PhotoSize):
+            raise ValueError("no photo given")
+
+        file = await self.app.bot.get_file(photo.file_id)
+        file_bytes = await file.download_as_bytearray()
+
+        return utils.compute_image_hash(file_bytes)
+
+    async def compute_video_thumb_hash(self, message: tg.Message) -> int:
+        """
+        TODO
+        """
+        if not isinstance(message, tg.Message):
+            raise ValueError("no message given")
+
+        if not isinstance(message.video, tg.Video):
+            raise ValueError("no video given")
+
+        # Compute the hash of the thumbnail.
+        if not message.video.thumbnail:
+            raise ValueError("no thumbnail given")
+
+        file = await self.app.bot.get_file(message.video.thumbnail.file_id)
+        file_bytes = await file.download_as_bytearray()
+
+        return utils.compute_image_hash(file_bytes)
 
     # ==============================================================================================
     # Send messages methods.
 
-    # async def send_message(self,
-    #                        chat_id: str,
-    #                        text: str,
-    #                        in_response_to: str = None,
-    #                        inline_buttons: list[list[models.InlineMessageButton]] = None) -> None:
-    #     """
-    #     TODO
-    #     """
-    #     reply_markup = self.get_inline_keyboard_markup(inline_buttons)
-    #     msg = await self.app.bot.send_message(chat_id,
-    #                                           text,
-    #                                           parse_mode=tg.constants.ParseMode.HTML,
-    #                                           reply_to_message_id=in_response_to,
-    #                                           reply_markup=reply_markup)
-    #     return msg.message_id
+    async def send_message(
+            self,
+            to_chat_id: int,
+            text: str,
+            in_response_to: str | None = None,
+            inline_buttons: list[list[models.InlineMessageButton]] | None = None) -> models.Message:
+        """
+        TODO
+        """
+        # reply_markup = self.get_inline_keyboard_markup(inline_buttons)
+        msg = await self.app.bot.send_message(
+            to_chat_id,
+            text,
+            parse_mode=tg.constants.ParseMode.HTML,
+            reply_to_message_id=in_response_to
+            # reply_markup=reply_markup
+        )
+        return self.entity_mapper.map_message(msg)
 
-    # async def send_photo(self,
-    #                      chat_id: str,
-    #                      photo,
-    #                      caption: str = None,
-    #                      in_response_to=None,
-    #                      inline_buttons: list[list[models.InlineMessageButton]] = None) -> None:
-    #     """
-    #     TODO
-    #     """
-    #     reply_markup = self.get_inline_keyboard_markup(inline_buttons)
-    #     msg = await self.app.bot.send_photo(chat_id,
-    #                                         photo,
-    #                                         caption=caption,
-    #                                         parse_mode=tg.constants.ParseMode.HTML,
-    #                                         reply_to_message_id=in_response_to,
-    #                                         reply_markup=reply_markup)
-    #     return msg.message_id
+    async def send_message_from_template(
+            self,
+            template_path: str,
+            to_chat_id: int,
+            in_response_to: str | None = None,
+            **kwargs) -> models.Message:
+        assert template_path is not None, "no template_path given"
+        assert to_chat_id is not None, "no to_chat_id given"
 
-    # async def send_video(self,
-    #                      chat_id: str,
-    #                      video,
-    #                      caption: str = None,
-    #                      in_response_to=None,
-    #                      inline_buttons: list[list[models.InlineMessageButton]] = None) -> None:
-    #     """
-    #     TODO
-    #     """
-    #     reply_markup = self.get_inline_keyboard_markup(inline_buttons)
-    #     msg = await self.app.bot.send_video(chat_id,
-    #                                         video,
-    #                                         caption=caption,
-    #                                         parse_mode=tg.constants.ParseMode.HTML,
-    #                                         reply_to_message_id=in_response_to,
-    #                                         reply_markup=reply_markup)
-    #     return msg.message_id
+        # Read the template file and replace the contained placeholders.
+        with open(template_path, "r") as stream:
+            template_str = stream.read().format_map(dict(kwargs))
 
-    # # ============================================================================================
-    # # Forward messages methods.
+        # Parse the template.
+        template = yaml.safe_load(template_str)
 
-    # async def forward_message(self, message: models.Message, to_chat_id: str) -> None:
-    #     """
-    #     TODO
-    #     """
-    #     msg = await self.app.bot.forward_message(to_chat_id, message.chat_id, message.id)
-    #     return msg.message_id
+        message = template.get("message")
+        if message is None:
+            raise ValueError("the template does not contain a 'message' section")
 
-    # # ============================================================================================
-    # # Delete messages methods.
+        text = message.get("text")
+        video = message.get("video")
+        keyboard = self.parse_keyboard_template(message)
 
-    # async def delete_message(self, chat_id: str, message_id: str) -> None:
-    #     """
-    #     TODO
-    #     """
-    #     await self.app.bot.delete_message(chat_id, message_id)
+        if video:
+            self.log.info(f"Sending video: {to_chat_id}, {video}")
+            msg = await self.app.bot.send_video(
+                chat_id=to_chat_id,
+                video=video,
+                caption=text,
+                parse_mode=tg.constants.ParseMode.HTML,
+                reply_to_message_id=in_response_to,
+                reply_markup=keyboard
+            )
+        else:
+            msg = await self.app.bot.send_message(
+                to_chat_id,
+                text=text,
+                parse_mode=tg.constants.ParseMode.HTML,
+                reply_to_message_id=in_response_to,
+                reply_markup=keyboard
+            )
+
+        return self.entity_mapper.map_message(msg)
+
+    # TODO: Move this to a parser class.
+    def parse_keyboard_template(self, message_template):
+        """
+        TODO
+        """
+        if message_template is None:
+            return None
+
+        keyboard_template = message_template.get("keyboard")
+        if keyboard_template is None:
+            return None
+
+        keyboard = []
+        for row in keyboard_template:
+            keyboard_row = []
+            for button in row:
+                button_type = button.get("type")
+                button_label = button.get("label")
+
+                if button_type == "url":
+                    keyboard_row.append(tg.InlineKeyboardButton(
+                        text=button_label,
+                        url=button.get("url")
+                    ))
+                elif button_type == "callback":
+                    keyboard_row.append(tg.InlineKeyboardButton(
+                        text=button_label,
+                        callback_data=button.get("callback_id")
+                    ))
+
+            keyboard.append(keyboard_row)
+
+        return tg.InlineKeyboardMarkup(keyboard)
+
+    async def send_photo(
+            self,
+            to_chat_id: str,
+            photo: typing.Any,
+            caption: str | None = None,
+            in_response_to: str | None = None,
+            inline_buttons: list[list[models.InlineMessageButton]] | None = None) -> models.Message:
+        """
+        TODO
+        """
+        # reply_markup = self.get_inline_keyboard_markup(inline_buttons)
+        msg = await self.app.bot.send_photo(
+            to_chat_id,
+            photo,
+            caption=caption,
+            parse_mode=tg.constants.ParseMode.HTML,
+            reply_to_message_id=in_response_to,
+            # reply_markup=reply_markup
+        )
+
+        return self.entity_mapper.map_message(msg)
+
+    async def send_video(
+            self,
+            to_chat_id: str,
+            video: typing.Any,
+            caption: str | None = None,
+            in_response_to: str | None = None,
+            inline_buttons: list[list[models.InlineMessageButton]] | None = None) -> models.Message:
+        """
+        TODO
+        """
+        # reply_markup = self.get_inline_keyboard_markup(inline_buttons)
+        msg = await self.app.bot.send_video(
+            to_chat_id=to_chat_id,
+            video=video,
+            caption=caption,
+            parse_mode=tg.constants.ParseMode.HTML,
+            reply_to_message_id=in_response_to,
+            # reply_markup=reply_markup
+        )
+
+        return self.entity_mapper.map_message(msg)
+
+    # ==============================================================================================
+    # Chat permissions.
+
+    async def get_chat_permissions(self, chat_id: int) -> models.ChatPermissions:
+        """
+        TODO
+        """
+        assert chat_id is not None, "no chat id given"
+
+        chat: tg.Chat = await self.app.bot.get_chat(chat_id)
+        return models.ChatPermissions(
+            users_can_send_messages=chat.permissions.can_send_messages,
+            users_can_send_polls=chat.permissions.can_send_polls,
+            users_can_send_other_messages=chat.permissions.can_send_other_messages,
+            users_can_add_web_page_previews=chat.permissions.can_add_web_page_previews,
+            users_can_change_info=chat.permissions.can_change_info,
+            users_can_invite_users=chat.permissions.can_invite_users,
+            users_can_pin_messages=chat.permissions.can_pin_messages,
+            users_can_manage_topics=chat.permissions.can_manage_topics,
+            users_can_send_audios=chat.permissions.can_send_audios,
+            users_can_send_documents=chat.permissions.can_send_documents,
+            users_can_send_photos=chat.permissions.can_send_photos,
+            users_can_send_videos=chat.permissions.can_send_videos,
+            users_can_send_video_notes=chat.permissions.can_send_video_notes,
+            users_can_send_voice_notes=chat.permissions.can_send_voice_notes
+        )
+
+    async def set_chat_permissions(self, chat_id: int, permissions: models.ChatPermissions) -> None:
+        """
+        TODO
+        """
+        assert chat_id is not None, "no chat id given"
+        assert permissions is not None, "no permissions given"
+
+        await self.app.bot.set_chat_permissions(chat_id, tg.ChatPermissions(
+            can_send_messages=permissions.users_can_send_messages,
+            can_send_polls=permissions.users_can_send_polls,
+            can_send_other_messages=permissions.users_can_send_other_messages,
+            can_add_web_page_previews=permissions.users_can_add_web_page_previews,
+            can_change_info=permissions.users_can_change_info,
+            can_invite_users=permissions.users_can_invite_users,
+            can_pin_messages=permissions.users_can_pin_messages,
+            can_manage_topics=permissions.users_can_manage_topics,
+            can_send_audios=permissions.users_can_send_audios,
+            can_send_documents=permissions.users_can_send_documents,
+            can_send_photos=permissions.users_can_send_photos,
+            can_send_videos=permissions.users_can_send_videos,
+            can_send_video_notes=permissions.users_can_send_video_notes,
+            can_send_voice_notes=permissions.users_can_send_voice_notes
+        ), use_independent_chat_permissions=True)
+
+    # ==============================================================================================
+    # Forward messages methods.
+
+    async def forward_message(self, message: models.Message, to_chat_id: str) -> None:
+        """
+        TODO
+        """
+        msg = await self.app.bot.forward_message(to_chat_id, message.chat_id, message.id)
+        return msg.message_id
+
+    # ==============================================================================================
+    # Methods to delete messages.
+
+    async def delete_messages(self, messages: list[models.Message]) -> None:
+        """
+        TODO
+        """
+        await asyncio.gather(*[self.delete_message_by_id(m.chat_id, m.id) for m in messages])
+
+    async def delete_message(self, message: models.Message) -> None:
+        """
+        TODO
+        """
+        await self.delete_message_by_id(message.chat_id, message.id)
+
+    async def delete_messages_by_ids(self, chat_id: int, message_ids: list[int]) -> None:
+        """
+        TODO
+        """
+        await asyncio.gather(*[self.delete_message_by_id(chat_id, id) for id in message_ids])
+
+    async def delete_message_by_id(self, chat_id: int, message_id: int) -> None:
+        """
+        TODO
+        """
+        await self.app.bot.delete_message(chat_id, message_id)
 
     # ==============================================================================================
     # Scheduler methods.
 
-    # def run_once(self, seconds_from_now: int, callback) -> None:
-    #     """
-    #     TODO
-    #     """
-    #     self.app.job_queue.run_once(callback, seconds_from_now)
-
-    # ==============================================================================================
-    # Logging methods.
-
-    # async def debug(self, msg: str, send_to_chat_id: int = None) -> None:
-    #     """
-    #     TODO
-    #     """
-    #     self.log.debug(msg)
-    #     if send_to_chat_id:
-    #         await self.send_message(send_to_chat_id, msg)
-
-    # async def error(self, msg: str, send_to_chat_id: int = None) -> None:
-    #     """
-    #     TODO
-    #     """
-    #     self.log.error(msg)
-    #     if send_to_chat_id:
-    #         await self.send_message(send_to_chat_id, msg)
+    def run_once(self, seconds_from_now: int, callback) -> None:
+        """
+        TODO
+        """
+        self.app.job_queue.run_once(callback, seconds_from_now)
 
     # ==============================================================================================
     # Helper methods.
 
-    # async def convert_message(self, source: tg.Message, compute_media_hash: bool) -> models.Message:
+    # ync def convert_message(self, source: tg.Message, compute_media_hash: bool) -> models.Message:
     #     """
     #     TODO
     #     """
@@ -446,140 +692,3 @@ class TelegramBot:
     #         keyboard.append(keyboard_row)
 
     #     return tg.InlineKeyboardMarkup(keyboard)
-
-    async def get_video(self, msg: tg.Message, compute_hash: bool = False) -> models.Video | None:
-        """
-        TODO
-        """
-        assert msg, "no message given"
-
-        if not isinstance(msg, tg.Message):
-            return
-
-        if msg.video is None:
-            return None
-
-        if not isinstance(msg.video, tg.Video):
-            return
-
-        video = models.Video()
-        video.id = tg_file_unique_id.FileUniqueId.from_unique_id(msg.video.file_unique_id).id
-        video.mime_type = msg.video.mime_type
-        video.duration = msg.video.duration
-        video.size = msg.video.file_size
-        video.width = msg.video.width
-        video.height = msg.video.height
-
-        # Compute the hash of the thumbnail.
-        if compute_hash and msg.video.thumbnail:
-            try:
-                thumbnail = await self.app.bot.get_file(msg.video.thumbnail.file_id)
-                thumbnail_bytes = await thumbnail.download_as_bytearray()
-                video.thumb_hash = utils.compute_image_hash(thumbnail_bytes)
-            except Exception as e:
-                print("Could not compute image hash.", e)
-                pass
-
-        return video
-
-    async def get_photo(self, msg: tg.Message, compute_hash: bool = False) -> models.Photo | None:
-        """
-        TODO
-        """
-        assert msg, "no message given"
-
-        if not isinstance(msg, tg.Message):
-            return None
-
-        if msg.photo is None:
-            return None
-
-        if not isinstance(msg.photo, tuple):
-            return None
-
-        if len(msg.photo) == 0:
-            return None
-
-        p: tg.PhotoSize = msg.photo[-1]
-        if not isinstance(p, tg.PhotoSize):
-            return None
-
-        photo = models.Photo()
-        photo.id = tg_file_unique_id.FileUniqueId.from_unique_id(p.file_unique_id).id
-        photo.height = p.height
-        photo.width = p.width
-        photo.size = p.file_size
-
-        # Compute the hash of the photo.
-        if compute_hash:
-            try:
-                file = await self.app.bot.get_file(p.file_id)
-                photo_bytes = await file.download_as_bytearray()
-                photo.hash = utils.compute_image_hash(photo_bytes)
-            except Exception as e:
-                print("Could not compute image hash.", e)
-                pass
-
-        return photo
-
-    def get_from_chat_id(self, msg: tg.Message) -> int | None:
-        """
-        TODO
-        """
-        if msg.sender_chat:
-            return msg.sender_chat.id
-        if msg.from_user:
-            return msg.from_user.id
-        return None
-
-    def get_from_chat_type(self, msg: tg.Message) -> str | None:
-        """
-        TODO
-        """
-        # TODO: Define it globally. Introduce an own enum or chat types.
-        mapping: dict[str, str] = {
-            tg.constants.ChatType.CHANNEL: "channel",
-            tg.constants.ChatType.GROUP: "group",
-            tg.constants.ChatType.SUPERGROUP: "group",
-            tg.constants.ChatType.SENDER: "user"
-        }
-
-        if msg.sender_chat:
-            return mapping.get(msg.sender_chat.type)
-        if msg.from_user:
-            return "user"
-        return None
-
-    def get_fwd_from_chat_id(self, msg: tg.Message) -> str | None:
-        """
-        TODO
-        """
-        # A user can hide his identity when forwarding one of his messages - in which case only
-        # the user name is stored in msg.forward_sender_name.
-        if msg.forward_sender_name:
-            return msg.forward_sender_name
-        if msg.forward_from:
-            return str(msg.forward_from.id)
-        if msg.forward_from_chat:
-            return str(msg.forward_from_chat.id)
-        if msg.forward_from_message_id:
-            return str(msg.forward_from_message_id)
-        return None
-
-    def get_fwd_from_chat_type(self, msg: tg.Message) -> str | None:
-        """
-        TODO
-        """
-        # TODO: Define it globally. Introduce an own enum or chat types.
-        mapping: dict[str, str] = {
-            tg.constants.ChatType.CHANNEL: "channel",
-            tg.constants.ChatType.GROUP: "group",
-            tg.constants.ChatType.SUPERGROUP: "group",
-            tg.constants.ChatType.SENDER: "user"
-        }
-
-        if msg.forward_from:
-            return "user"
-        if msg.forward_from_chat:
-            return mapping.get(msg.forward_from_chat.type)
-        return None

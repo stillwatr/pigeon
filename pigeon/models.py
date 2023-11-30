@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import datetime
+import uuid
+
+import pigeon.models
 
 # ==================================================================================================
 
 
-class TelegramObject:
+class TelegramEntity:
     """
     TODO
     """
@@ -17,7 +20,80 @@ class TelegramObject:
 # ==================================================================================================
 
 
-class Chat(TelegramObject):
+class ChatPermissions:
+    """
+    TODO
+    """
+    users_can_send_messages: bool
+    users_can_send_polls: bool
+    users_can_send_other_messages: bool
+    users_can_add_web_page_previews: bool
+    users_can_change_info: bool
+    users_can_invite_users: bool
+    users_can_pin_messages: bool
+    users_can_manage_topics: bool
+    users_can_send_audios: bool
+    users_can_send_documents: bool
+    users_can_send_photos: bool
+    users_can_send_videos: bool
+    users_can_send_video_notes: bool
+    users_can_send_voice_notes: bool
+
+    def __init__(
+            self,
+            users_can_send_messages: bool | None = None,
+            users_can_send_polls: bool | None = None,
+            users_can_send_other_messages: bool | None = None,
+            users_can_add_web_page_previews: bool | None = None,
+            users_can_change_info: bool | None = None,
+            users_can_invite_users: bool | None = None,
+            users_can_pin_messages: bool | None = None,
+            users_can_manage_topics: bool | None = None,
+            users_can_send_audios: bool | None = None,
+            users_can_send_documents: bool | None = None,
+            users_can_send_photos: bool | None = None,
+            users_can_send_videos: bool | None = None,
+            users_can_send_video_notes: bool | None = None,
+            users_can_send_voice_notes: bool | None = None) -> None:
+        self.users_can_send_messages = users_can_send_messages
+        self.users_can_send_polls = users_can_send_polls
+        self.users_can_send_other_messages = users_can_send_other_messages
+        self.users_can_add_web_page_previews = users_can_add_web_page_previews
+        self.users_can_change_info = users_can_change_info
+        self.users_can_invite_users = users_can_invite_users
+        self.users_can_pin_messages = users_can_pin_messages
+        self.users_can_manage_topics = users_can_manage_topics
+        self.users_can_send_audios = users_can_send_audios
+        self.users_can_send_documents = users_can_send_documents
+        self.users_can_send_photos = users_can_send_photos
+        self.users_can_send_videos = users_can_send_videos
+        self.users_can_send_video_notes = users_can_send_video_notes
+        self.users_can_send_voice_notes = users_can_send_voice_notes
+
+    def copy(self) -> ChatPermissions:
+        """
+        TODO
+        """
+        permissions = ChatPermissions()
+        permissions.users_can_send_messages = self.users_can_send_messages
+        permissions.users_can_send_polls = self.users_can_send_polls
+        permissions.users_can_send_other_messages = self.users_can_send_other_messages
+        permissions.users_can_add_web_page_previews = self.users_can_add_web_page_previews
+        permissions.users_can_change_info = self.users_can_change_info
+        permissions.users_can_invite_users = self.users_can_invite_users
+        permissions.users_can_pin_messages = self.users_can_pin_messages
+        permissions.users_can_manage_topics = self.users_can_manage_topics
+        permissions.users_can_send_audios = self.users_can_send_audios
+        permissions.users_can_send_documents = self.users_can_send_documents
+        permissions.users_can_send_photos = self.users_can_send_photos
+        permissions.users_can_send_videos = self.users_can_send_videos
+        permissions.users_can_send_video_notes = self.users_can_send_video_notes
+        permissions.users_can_send_voice_notes = self.users_can_send_voice_notes
+
+        return permissions
+
+
+class Chat(TelegramEntity):
     """
     TODO
     """
@@ -32,12 +108,40 @@ class Chat(TelegramObject):
             name: str | None = None,
             verified: bool | None = None,
             restricted: bool | None = None,
-            restricted_reason: str | None = None) -> None:
+            restricted_reason: str | None = None,
+            users_can_send_messages: bool | None = None,
+            users_can_send_polls: bool | None = None,
+            users_can_send_other_messages: bool | None = None,
+            users_can_add_web_page_previews: bool | None = None,
+            users_can_change_info: bool | None = None,
+            users_can_invite_users: bool | None = None,
+            users_can_pin_messages: bool | None = None,
+            users_can_manage_topics: bool | None = None,
+            users_can_send_audios: bool | None = None,
+            users_can_send_documents: bool | None = None,
+            users_can_send_photos: bool | None = None,
+            users_can_send_videos: bool | None = None,
+            users_can_send_video_notes: bool | None = None,
+            users_can_send_voice_notes: bool | None = None) -> None:
         super().__init__(id)
         self.name = name
         self.verified = verified
         self.restricted = restricted
         self.restricted_reason = restricted_reason
+        self.users_can_send_messages = users_can_send_messages
+        self.users_can_send_polls = users_can_send_polls
+        self.users_can_send_other_messages = users_can_send_other_messages
+        self.users_can_add_web_page_previews = users_can_add_web_page_previews
+        self.users_can_change_info = users_can_change_info
+        self.users_can_invite_users = users_can_invite_users
+        self.users_can_pin_messages = users_can_pin_messages
+        self.users_can_manage_topics = users_can_manage_topics
+        self.users_can_send_audios = users_can_send_audios
+        self.users_can_send_documents = users_can_send_documents
+        self.users_can_send_photos = users_can_send_photos
+        self.users_can_send_videos = users_can_send_videos
+        self.users_can_send_video_notes = users_can_send_video_notes
+        self.users_can_send_voice_notes = users_can_send_voice_notes
 
 
 class User(Chat):
@@ -177,7 +281,7 @@ class Channel(Chat):
 # ==================================================================================================
 
 
-class Message(TelegramObject):
+class Message(TelegramEntity):
     """
     TODO
     """
@@ -279,7 +383,36 @@ class Message(TelegramObject):
 # ==================================================================================================
 
 
-class Photo(TelegramObject):
+class Command(Message):
+    """
+    TODO
+    """
+    command: str
+    args: list[str]
+
+    def __str__(self) -> str:
+        """
+        TODO
+        """
+        return "Command(" \
+               f"id: {self.id}; " \
+               f"chat_id: {self.chat_id}; " \
+               f"from_chat_id: {self.from_chat_id}; " \
+               f"from_chat_type: {self.from_chat_type}; " \
+               f"post_date: {self.post_date}; " \
+               f"command: {self.command}; " \
+               f"args: {self.args})"
+
+    def __repr__(self) -> str:
+        """
+        TODO
+        """
+        return f"Command(id: {self.id})"
+
+# ==================================================================================================
+
+
+class Photo(TelegramEntity):
     """
     TODO
     """
@@ -324,7 +457,7 @@ class Photo(TelegramObject):
 # ==================================================================================================
 
 
-class Video(TelegramObject):
+class Video(TelegramEntity):
     """
     TODO
     """
@@ -382,17 +515,78 @@ class InlineMessageButton():
     TODO
     """
     label: str
-    url: str
-    callback_data: str | object
+    url: str | None
+    callback_data: str | object | None
 
     def __init__(
             self,
             label: str,
-            callback_data: str | object = None,
-            url: str | None = None) -> None:
+            url: str | None = None,
+            callback_data: str | object | None = None) -> None:
         """
         TODO
         """
         self.label = label
         self.url = url
         self.callback_data = callback_data
+
+
+class BotAction:
+    """
+    TODO
+    """
+    name: str
+
+    async def run(self, chat_id: int, params: dict = {}) -> None:
+        """
+        TODO
+        """
+        pass
+
+
+class Callback:
+    """
+    TODO
+    """
+    id: str
+    action_name: str
+    chat_id: int
+    params: dict
+    authorization_type: str  # 'by_user_id'
+    authorization_parties: list[str]
+
+    def __init__(
+            self,
+            id: str | None = None,
+            action: BotAction | None = None,
+            chat_id: int | None = None,
+            params: dict = {},
+            authorization_type: str | None = None,
+            authorization_parties: list[str] = []) -> None:
+        """
+        TODO
+        """
+        self.id = id if id is not None else uuid.uuid4()
+        self.action_name = action.name if action is not None else None
+        self.chat_id = chat_id
+        self.params = params
+        self.authorization_type = authorization_type
+        self.authorization_parties = authorization_parties
+
+    def __str__(self) -> str:
+        """
+        TODO
+        """
+        return "Callback(" \
+               f"id: {self.id}; " \
+               f"action_name: {self.action_name}; " \
+               f"chat_id: {self.chat_id}; " \
+               f"params: {self.params}; " \
+               f"authorization_type: {self.authorization_type}; " \
+               f"authorization_parties: {self.authorization_parties})"
+
+    def __repr__(self) -> str:
+        """
+        TODO
+        """
+        return f"Callback(id: {self.id}, action: {self.action_name})"

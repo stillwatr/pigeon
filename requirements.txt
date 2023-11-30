@@ -4,6 +4,6 @@ dataset==1.6.0
 imagehash==4.3.1
 Pillow==10.1.0
 psycopg2==2.9.9
-python-telegram-bot==20.1
-python-telegram-bot[job-queue]==20.1
+python-telegram-bot==20.6
+python-telegram-bot[job-queue]==20.6
 tg-file-id==0.0.4

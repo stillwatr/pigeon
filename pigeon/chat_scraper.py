@@ -6,6 +6,7 @@ import typing
 
 import pigeon.models
 import pigeon.utils
+import pigeon.logging as logging
 
 # ==================================================================================================
 
@@ -26,15 +27,20 @@ class TelegramChatScraper:
         )
         self.chats: list[pigeon.models.Chat] = []
 
-    async def start(self) -> TelegramChatScraper:
+        self.log = logging.Log(__file__)
+        self.log.set_level(logging.LogLevel.INFO)
+        console_log_handler = logging.ConsoleLogHandler()
+        console_log_handler.setLevel(logging.LogLevel.DEBUG)
+        self.log.add_handler(console_log_handler)
+
+    async def start(
+            self,
+            phone: str | typing.Callable | None = lambda: input("Phone: "),
+            password: str | typing.Callable | None = lambda: input("PW: ")) -> TelegramChatScraper:
         """
         TODO
         """
-        # Try to start the client.
-        try:
-            await self.client.start()
-        except Exception as e:
-            raise RuntimeError("Could not start the Telethon client.", e)
+        await self.client.start(phone=phone, password=password)
 
         # Get the chats the user is a member of. This is necessary to later access groups
         # and chats by id, see https://docs.telethon.dev/en/stable/concepts/entities.html.
@@ -44,6 +50,12 @@ class TelegramChatScraper:
             raise RuntimeError("Could not get chats.", e)
 
         return self
+
+    async def stop(self) -> None:
+        """
+        TODO
+        """
+        await self.client.disconnect()
 
     async def get_chats(self) -> list[pigeon.models.Chat]:
         """
@@ -284,13 +296,15 @@ class TelegramChatScraper:
         assert msg is not None, "No message given."
 
         if msg.reactions is None:
-            return None
+            return []
 
         if msg.reactions.results is None:
-            return None
+            return []
 
         reactions: list[tuple] = []
         for entry in msg.reactions.results:
+            if isinstance(entry.reaction, telethon.types.ReactionCustomEmoji):
+                continue  # 'ReactionCustomEmoji' object has no attribute 'emoticon'
             emoticon = entry.reaction.emoticon if entry.reaction is not None else None
             count = entry.count
             reactions.append((emoticon, count))
